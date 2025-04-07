@@ -33,9 +33,12 @@ export const fetchMatchups = async (
     .from("matchups")
     .select(
       `id, vod_id, username, vod_link, rank, frame_time, 
-           vods!inner(streamer_id, streamers!inner(name, profile_image_url, display_name))`,
-      { count: "exact" } // Count total records for pagination
+       vods!inner(vod_id, streamer_id, date_uploaded, 
+         streamers!inner(name, profile_image_url, display_name)
+       )`,
+      { count: "exact" }
     )
+
     .ilike("username", `%${usernameQuery}%`)
     .range(from, to);
 
@@ -46,7 +49,17 @@ export const fetchMatchups = async (
   const { data, error, count } = await query;
 
   if (error) {
-    throw error;
+    // console.error(error.message);
+    return {
+      matchups: [],
+      pageData: {
+        total: 0,
+        page: 0,
+        pageSize: 20,
+        totalPages: 0,
+      },
+      error: error.message,
+    };
   }
 
   return {

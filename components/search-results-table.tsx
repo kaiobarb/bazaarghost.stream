@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink, Twitch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -16,6 +16,8 @@ import { TablePagination } from "./table-pagination";
 import { useSearchParams, usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { Fragment } from "react";
+import { format } from "date-fns";
 
 interface SearchResultsTableProps {
   results: {
@@ -27,6 +29,7 @@ interface SearchResultsTableProps {
     frame_time: number;
     vods: {
       streamer_id: number | null;
+      date_uploaded: string;
       streamers: {
         name: string;
         display_name: string | null;
@@ -75,10 +78,6 @@ export default function SearchResultsTable({
     replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  // Calculate pagination
-  // const startIndex = (currentPage - 1) * pageData.pageSize;
-  // const endIndex = Math.min(startIndex + pageData.pageSize, results.length);
-
   // Handle page size change
   const handlePageSizeChange = (size: number) => {
     const params = new URLSearchParams(searchParams);
@@ -115,7 +114,7 @@ export default function SearchResultsTable({
         </TableHeader>
         <TableBody>
           {results.map((result) => (
-            <>
+            <Fragment key={result.id}>
               <TableRow
                 key={result.id}
                 className="cursor-pointer border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800/50"
@@ -159,9 +158,11 @@ export default function SearchResultsTable({
                   {result.username}
                 </TableCell>
 
-                {/* Date - Currently empty in the original */}
                 <TableCell className="text-zinc-400">
-                  {/* Date would go here */}
+                  {format(
+                    new Date(result.vods?.date_uploaded || ""),
+                    "MMM d, yyyy 'at' HH:mm"
+                  )}
                 </TableCell>
 
                 {/* Actions */}
@@ -174,8 +175,9 @@ export default function SearchResultsTable({
                       className="flex items-center gap-1 rounded bg-purple-600 px-3 py-1.5 text-sm font-medium hover:bg-purple-700"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <ExternalLink className="h-4 w-4" />
-                      <span className="hidden sm:inline">Twitch</span>
+                      <span className="hidden sm:inline">
+                        <Twitch className="h-4 w-4" />
+                      </span>
                     </a>
                     <Button
                       variant="ghost"
@@ -198,7 +200,10 @@ export default function SearchResultsTable({
 
               {/* Expanded Content */}
               {expandedRows[result.id] && (
-                <TableRow className="border-0 hover:bg-zinc-800/50">
+                <TableRow
+                  className="border-0 hover:bg-zinc-800/50"
+                  key={result.id}
+                >
                   <TableCell
                     colSpan={4}
                     className="p-0 border-t border-zinc-800"
@@ -226,7 +231,7 @@ export default function SearchResultsTable({
                   </TableCell>
                 </TableRow>
               )}
-            </>
+            </Fragment>
           ))}
         </TableBody>
       </Table>

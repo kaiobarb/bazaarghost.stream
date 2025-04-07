@@ -2,9 +2,7 @@
 
 import type React from "react";
 
-import { useState } from "react";
 import { Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -14,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { useDebouncedCallback } from "use-debounce";
 
 export default function StreamerSearch({
   streams,
@@ -27,6 +26,8 @@ export default function StreamerSearch({
   const handleSelectChange = (value: string) => {
     const params = new URLSearchParams(searchParams);
     if (value) {
+      params.delete("p");
+      // params.delete()
       params.set("stream", value);
     } else {
       params.delete("stream");
@@ -34,15 +35,16 @@ export default function StreamerSearch({
     replace(`${pathname}?${params.toString()}`);
   };
 
-  const handleInputChange = (input: string) => {
+  const handleInputChange = useDebouncedCallback((input: string) => {
     const params = new URLSearchParams(searchParams);
+    console.log(input);
     if (input) {
       params.set("username", input);
     } else {
       params.delete("username");
     }
-    replace(`${pathname}?${params.toString()}`);
-  };
+    replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, 50);
 
   return (
     <div className="rounded-xl bg-zinc-800/50 p-6 shadow-lg">
@@ -68,7 +70,9 @@ export default function StreamerSearch({
             <SelectContent className="border-zinc-700 bg-zinc-900 text-white">
               <SelectItem value="*">*</SelectItem>
               {streams.map((stream) => (
-                <SelectItem value={stream.name}>{stream.name}</SelectItem>
+                <SelectItem key={stream.name} value={stream.name}>
+                  {stream.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -86,24 +90,13 @@ export default function StreamerSearch({
               id="username"
               type="text"
               defaultValue={searchParams.get("username")?.toString()}
-              // value={username}
               onChange={(e) => handleInputChange(e.target.value)}
-              placeholder="Enter the username of the player you want to find clips against"
+              placeholder="Enter the username of the player you want to find matchups of"
               className="border-zinc-700 bg-zinc-900 pl-10 text-white placeholder:text-zinc-500"
             />
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
           </div>
-          {/* <p className="text-left text-xs text-zinc-500">
-            Enter the username of the player you want to find clips against
-          </p> */}
         </div>
-
-        <Button
-          type="submit"
-          className="h-12 bg-purple-600 text-lg font-medium hover:bg-purple-700 w-full"
-        >
-          Search Clips
-        </Button>
       </div>
     </div>
   );
