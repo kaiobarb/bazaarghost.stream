@@ -2,6 +2,7 @@ import type React from "react";
 import type { Metadata } from "next";
 
 import { Analytics } from "@vercel/analytics/next";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 import {
@@ -38,10 +39,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <meta name="apple-mobile-web-app-title" content="BazaarGhost" />
       <body className={`${inter.className} antialiased`}>
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

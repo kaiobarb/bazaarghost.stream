@@ -4,25 +4,25 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* New design system based on #FF9933 orange and #1A1A1A dark background */
-  --background: #1a1a1a;
-  --foreground: #f5f5f5;
-  --card: #242424;
-  --card-foreground: #f5f5f5;
-  --popover: #242424;
-  --popover-foreground: #f5f5f5;
+  /* Light mode design system - default */
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --card: #f5f5f5;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
   --primary: #ff9933;
-  --primary-foreground: #1a1a1a;
-  --secondary: #2d2d2d;
-  --secondary-foreground: #f5f5f5;
-  --muted: #2d2d2d;
-  --muted-foreground: #a0a0a0;
+  --primary-foreground: #ffffff;
+  --secondary: #e5e5e5;
+  --secondary-foreground: #1a1a1a;
+  --muted: #e5e5e5;
+  --muted-foreground: #666666;
   --accent: #ff9933;
-  --accent-foreground: #1a1a1a;
+  --accent-foreground: #ffffff;
   --destructive: #ef4444;
-  --destructive-foreground: #f5f5f5;
-  --border: #333333;
-  --input: #2d2d2d;
+  --destructive-foreground: #ffffff;
+  --border: #e5e5e5;
+  --input: #f5f5f5;
   --ring: #ff9933;
   --chart-1: #ff9933;
   --chart-2: #ffb366;
@@ -30,24 +30,24 @@
   --chart-4: #ff8000;
   --chart-5: #e68a2e;
   --radius: 0.5rem;
-  --sidebar: #1a1a1a;
-  --sidebar-foreground: #f5f5f5;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1a1a;
   --sidebar-primary: #ff9933;
-  --sidebar-primary-foreground: #1a1a1a;
-  --sidebar-accent: #2d2d2d;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e5e5e5;
   --sidebar-accent-foreground: #ff9933;
-  --sidebar-border: #333333;
+  --sidebar-border: #e5e5e5;
   --sidebar-ring: #ff9933;
   --shadow-x: 0px;
-  --shadow-y: 0px;
-  --shadow-blur: 0px;
+  --shadow-y: 1px;
+  --shadow-blur: 2px;
   --shadow-spread: 0px;
-  --shadow-opacity: 0;
+  --shadow-opacity: 0.1;
   --shadow-color: #000000;
 }
 
 .dark {
-  /* Dark mode uses same colors since this is a dark-first design */
+  /* Dark mode design system */
   --background: #1a1a1a;
   --foreground: #f5f5f5;
   --card: #242424;
