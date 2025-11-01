@@ -3,7 +3,14 @@
 import type React from "react";
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
-import { Search, Moon, Sun, Loader2, Check, ChevronsUpDown } from "lucide-react";
+import {
+  Search,
+  Moon,
+  Sun,
+  Loader2,
+  Check,
+  ChevronsUpDown,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -52,33 +59,101 @@ export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [selectedStreamer, setSelectedStreamer] = useState<Streamer | null>(null);
+  const [selectedStreamer, setSelectedStreamer] = useState<Streamer | null>(
+    null
+  );
   const [selectedDateRange, setSelectedDateRange] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamers, setStreamers] = useState<Streamer[]>([]);
   const [searchTimer, setSearchTimer] = useState<NodeJS.Timeout | null>(null);
   const [openStreamerPopover, setOpenStreamerPopover] = useState(false);
+  const [stats, setStats] = useState({
+    streamers: 0,
+    vods: 0,
+    matchups: 0
+  });
 
   useEffect(() => {
     fetchStreamers();
     fetchInitialResults();
+    fetchStats();
   }, [supabase]);
 
   const fetchStreamers = async () => {
     try {
+      // Get streamers from detection_search view to ensure we only show streamers with valid detections
+      // Limit the query for performance and use recent detections
       const { data, error } = await supabase
-        .from("streamers")
-        .select("*")
-        .eq("processing_enabled", true)
-        .order("login", { ascending: true });
+        .from("detection_search")
+        .select("streamer_id, streamer_login, streamer_display_name, streamer_avatar")
+        .not("streamer_id", "is", null)
+        .order("actual_timestamp", { ascending: false })
+        .limit(1000); // Limit to recent detections for performance
 
       if (error) throw error;
+
       if (data) {
-        setStreamers(data);
+        // Create a map to get unique streamers
+        const uniqueStreamersMap = new Map<number, Streamer>();
+
+        data.forEach(item => {
+          if (item.streamer_id && !uniqueStreamersMap.has(item.streamer_id)) {
+            // Create a Streamer object that matches the expected type
+            uniqueStreamersMap.set(item.streamer_id, {
+              id: item.streamer_id,
+              login: item.streamer_login,
+              display_name: item.streamer_display_name,
+              profile_image_url: item.streamer_avatar,
+              processing_enabled: true,
+              created_at: null,
+              updated_at: null,
+              has_vods: null,
+              num_vods: null,
+              num_bazaar_vods: null,
+              oldest_vod: null
+            });
+          }
+        });
+
+        // Convert map to array and sort by display_name
+        const uniqueStreamers = Array.from(uniqueStreamersMap.values())
+          .sort((a, b) => {
+            const nameA = a.display_name || a.login;
+            const nameB = b.display_name || b.login;
+            return nameA.localeCompare(nameB);
+          });
+
+        setStreamers(uniqueStreamers);
       }
     } catch (err) {
       console.error("Error fetching streamers:", err);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      // Call the database function via RPC for efficient server-side counting
+      const { data, error } = await supabase
+        .rpc('get_global_stats');
+
+      if (error) throw error;
+
+      if (data) {
+        setStats({
+          streamers: data.streamers || 0,
+          vods: data.vods || 0,
+          matchups: data.matchups || 0
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching stats:", err);
+      // Set default values on error
+      setStats({
+        streamers: 0,
+        vods: 0,
+        matchups: 0
+      });
     }
   };
 
@@ -224,6 +299,15 @@ export default function SearchPage() {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'm';
+    } else if (num >= 1000) {
+      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return num.toString();
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <nav className="border-b border-border bg-card">
@@ -237,9 +321,7 @@ export default function SearchPage() {
                 height={40}
                 className="object-contain"
               />
-              <h1 className="text-xl font-bold text-primary">
-                Bazaar Ghost
-              </h1>
+              <h1 className="text-xl font-bold text-primary">Bazaar Ghost</h1>
             </div>
             <Button
               variant="ghost"
@@ -258,11 +340,19 @@ export default function SearchPage() {
       </nav>
 
       <div className="mx-auto max-w-4xl px-1 py-3">
+        {/* Stats Display */}
+        <div className="text-xs text-muted-foreground font-mono mb-4 text-center">
+          tracking {formatNumber(stats.streamers)} streamers · {formatNumber(stats.vods)} vods · {formatNumber(stats.matchups)} matchups
+        </div>
+
         {/* Search Bar */}
         <form onSubmit={handleSearch} className="mb-8" autoComplete="off">
           <div className="flex gap-3 items-center mb-4">
             {/* Streamer Combobox */}
-            <Popover open={openStreamerPopover} onOpenChange={setOpenStreamerPopover}>
+            <Popover
+              open={openStreamerPopover}
+              onOpenChange={setOpenStreamerPopover}
+            >
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -274,14 +364,20 @@ export default function SearchPage() {
                     <div className="flex items-center gap-2">
                       <Avatar className="h-6 w-6">
                         <AvatarImage
-                          src={selectedStreamer.profile_image_url || "/placeholder.svg"}
+                          src={
+                            selectedStreamer.profile_image_url ||
+                            "/placeholder.svg"
+                          }
                           alt={selectedStreamer.display_name || ""}
                         />
                         <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                          {selectedStreamer.display_name?.[0]?.toUpperCase() || "S"}
+                          {selectedStreamer.display_name?.[0]?.toUpperCase() ||
+                            "S"}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="truncate">{selectedStreamer.display_name}</span>
+                      <span className="truncate">
+                        {selectedStreamer.display_name}
+                      </span>
                     </div>
                   ) : (
                     <span className="text-muted-foreground">Any Streamer</span>
@@ -304,7 +400,9 @@ export default function SearchPage() {
                       >
                         <Check
                           className={`mr-2 h-4 w-4 ${
-                            selectedStreamer === null ? "opacity-100" : "opacity-0"
+                            selectedStreamer === null
+                              ? "opacity-100"
+                              : "opacity-0"
                           }`}
                         />
                         <span>Any Streamer</span>
@@ -321,12 +419,16 @@ export default function SearchPage() {
                         >
                           <Check
                             className={`mr-2 h-4 w-4 ${
-                              selectedStreamer?.id === streamer.id ? "opacity-100" : "opacity-0"
+                              selectedStreamer?.id === streamer.id
+                                ? "opacity-100"
+                                : "opacity-0"
                             }`}
                           />
                           <Avatar className="h-8 w-8 mr-2">
                             <AvatarImage
-                              src={streamer.profile_image_url || "/placeholder.svg"}
+                              src={
+                                streamer.profile_image_url || "/placeholder.svg"
+                              }
                               alt={streamer.display_name || ""}
                             />
                             <AvatarFallback className="text-xs bg-primary text-primary-foreground">
@@ -414,19 +516,19 @@ export default function SearchPage() {
                       {result.streamerName[0]?.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-
                   <div className="flex-1 text-foreground">
                     <span className="font-medium">{result.streamerName}</span>
-                    <span className="text-muted-foreground">
-                      {" "}
-                      vs{" "}
-                    </span>
-                    <span className="font-medium">{result.username}</span>
+                    <span className="text-muted-foreground"> vs </span>
                     {result.rank && (
-                      <span className="ml-2 text-xs uppercase text-muted-foreground">
-                        ({result.rank})
-                      </span>
+                      <Image
+                        src={`/${result.rank.toLowerCase()}.webp`}
+                        alt={result.rank}
+                        width={32}
+                        height={32}
+                        className="mr-1 inline-block"
+                      />
                     )}
+                    <span className="font-medium">{result.username}</span>
                   </div>
 
                   <div className="flex flex-col items-end gap-1">
@@ -481,9 +583,7 @@ export default function SearchPage() {
                             typeof window !== "undefined"
                               ? window.location.hostname
                               : "localhost"
-                          }&time=${
-                            result.frameTimeSeconds
-                          }s&autoplay=true`}
+                          }&time=${result.frameTimeSeconds}s&autoplay=true`}
                           height="100%"
                           width="100%"
                           allowFullScreen
