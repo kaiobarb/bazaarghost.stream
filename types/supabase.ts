@@ -562,6 +562,7 @@ export type Database = {
       }
       cron_insert_new_streamers: { Args: never; Returns: undefined }
       cron_update_streamer_vods: { Args: never; Returns: undefined }
+      get_global_stats: { Args: never; Returns: Json }
       get_pending_chunks_for_vod: {
         Args: { p_source_id?: string; p_vod_id?: number }
         Returns: {
@@ -581,6 +582,26 @@ export type Database = {
           ready_vods: number
           total_pending_chunks: number
           total_vods: number
+        }[]
+      }
+      get_top_streamers_with_recent_detections: {
+        Args: { detections_per_streamer?: number; top_count?: number }
+        Returns: {
+          actual_timestamp: string
+          confidence: number
+          detection_id: string
+          detection_row_num: number
+          frame_time_seconds: number
+          rank: string
+          streamer_avatar: string
+          streamer_display_name: string
+          streamer_id: number
+          streamer_login: string
+          total_detections: number
+          username: string
+          vod_id: number
+          vod_source_id: string
+          vod_url: string
         }[]
       }
       process_pending_vods: {
