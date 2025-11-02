@@ -28,11 +28,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  supabase,
-  type DetectionSearchView,
-  type Streamer,
-} from "@/lib/supabase";
+import { supabase, type Streamer } from "@/lib/supabase";
 
 interface SearchResult {
   id: string;
@@ -45,6 +41,7 @@ interface SearchResult {
   frameTimeSeconds?: number;
   confidence?: number;
   rank?: string;
+  similarityScore?: number;
 }
 
 interface StreamerWithDetections {
@@ -64,7 +61,7 @@ export default function SearchPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedStreamer, setSelectedStreamer] = useState<Streamer | null>(
-    null,
+    null
   );
   const [selectedDateRange, setSelectedDateRange] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(false);
@@ -78,7 +75,7 @@ export default function SearchPage() {
     matchups: 0,
   });
   const [topStreamers, setTopStreamers] = useState<StreamerWithDetections[]>(
-    [],
+    []
   );
   const [hasSearched, setHasSearched] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -124,7 +121,7 @@ export default function SearchPage() {
       const query = search ? `?${search}` : "";
       router.push(`/${query}`);
     },
-    [router, searchParams, isUpdatingFromURL],
+    [router, searchParams, isUpdatingFromURL]
   );
 
   // Initialize on mount and sync with URL params
@@ -179,7 +176,7 @@ export default function SearchPage() {
       const { data, error } = await supabase
         .from("detection_search")
         .select(
-          "streamer_id, streamer_login, streamer_display_name, streamer_avatar",
+          "streamer_id, streamer_login, streamer_display_name, streamer_avatar"
         )
         .not("streamer_id", "is", null)
         .order("actual_timestamp", { ascending: false })
@@ -196,7 +193,7 @@ export default function SearchPage() {
             // Create a Streamer object that matches the expected type
             uniqueStreamersMap.set(item.streamer_id, {
               id: item.streamer_id,
-              login: item.streamer_login,
+              login: item.streamer_login || "", // Provide empty string if null
               display_name: item.streamer_display_name,
               profile_image_url: item.streamer_avatar,
               processing_enabled: true,
@@ -216,7 +213,7 @@ export default function SearchPage() {
             const nameA = a.display_name || a.login;
             const nameB = b.display_name || b.login;
             return nameA.localeCompare(nameB);
-          },
+          }
         );
 
         setStreamers(uniqueStreamers);
@@ -233,11 +230,17 @@ export default function SearchPage() {
 
       if (error) throw error;
 
-      if (data) {
+      if (
+        data &&
+        typeof data === "object" &&
+        "streamers" in data &&
+        "vods" in data &&
+        "matchups" in data
+      ) {
         setStats({
-          streamers: data.streamers || 0,
-          vods: data.vods || 0,
-          matchups: data.matchups || 0,
+          streamers: (data as any).streamers || 0,
+          vods: (data as any).vods || 0,
+          matchups: (data as any).matchups || 0,
         });
       }
     } catch (err) {
@@ -261,7 +264,7 @@ export default function SearchPage() {
         {
           top_count: 10,
           detections_per_streamer: 4,
-        },
+        }
       );
 
       if (error) throw error;
@@ -309,79 +312,42 @@ export default function SearchPage() {
     }
   };
 
-  const mapToSearchResults = (data: DetectionSearchView[]): SearchResult[] => {
-    return data.map((item) => ({
-      id: item.detection_id,
-      username: item.username,
-      streamerName: item.streamer_display_name || "Unknown",
-      streamerAvatar: item.streamer_avatar || "/placeholder.svg",
-      date: item.actual_timestamp || new Date().toISOString(),
-      vodUrl: item.vod_url || undefined,
-      vodSourceId: item.vod_source_id || undefined,
-      frameTimeSeconds: item.frame_time_seconds || undefined,
-      confidence: item.confidence ?? undefined,
-      rank: item.rank ?? undefined,
-    }));
-  };
-
   const performSearch = async (query: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Build the base query using the view
-      let queryBuilder = supabase.from("detection_search").select("*");
-
-      // Add username search if provided
-      if (query.trim()) {
-        queryBuilder = queryBuilder.ilike("username", `%${query}%`);
-      }
-
-      // Add streamer filter if selected
-      if (selectedStreamer) {
-        queryBuilder = queryBuilder.eq("streamer_id", selectedStreamer.id);
-      }
-
-      // Add date range filter if selected
-      if (selectedDateRange !== "all") {
-        const now = new Date();
-        let dateFrom: Date;
-
-        switch (selectedDateRange) {
-          case "week":
-            dateFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            break;
-          case "month":
-            dateFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-            break;
-          case "year":
-            dateFrom = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-            break;
-          default:
-            dateFrom = new Date(0);
-        }
-
-        // Filter by actual_timestamp which includes frame offset
-        queryBuilder = queryBuilder.gte(
-          "actual_timestamp",
-          dateFrom.toISOString(),
-        );
-      }
-
-      // Order by actual timestamp (VOD publish date + frame time)
-      queryBuilder = queryBuilder
-        .order("actual_timestamp", { ascending: false })
-        .limit(50);
-
-      const { data, error } = await queryBuilder;
+      // Use the fuzzy search RPC function
+      const { data, error } = await supabase.rpc("fuzzy_search_detections", {
+        search_query: query.trim() || undefined,
+        streamer_id_filter: selectedStreamer?.id || undefined,
+        date_range_filter: selectedDateRange,
+        similarity_threshold: 0.25, // Only return results with > 45% similarity
+        result_limit: 20,
+      });
 
       if (error) throw error;
 
-      if (data) {
-        const mappedResults = mapToSearchResults(
-          data as unknown as DetectionSearchView[],
-        );
+      if (data && Array.isArray(data)) {
+        // Map the RPC results to SearchResult format
+        const mappedResults: SearchResult[] = data.map((item) => ({
+          id: item.detection_id,
+          username: item.username,
+          streamerName:
+            item.streamer_display_name || item.streamer_login || "Unknown",
+          streamerAvatar: item.streamer_avatar || "/placeholder.svg",
+          date: item.actual_timestamp,
+          vodUrl: item.vod_url || undefined,
+          vodSourceId: item.vod_source_id || undefined,
+          frameTimeSeconds: item.frame_time_seconds || undefined,
+          confidence: item.confidence ?? undefined,
+          rank: item.rank ?? undefined,
+          similarityScore: item.similarity_score,
+        }));
+
         setResults(mappedResults);
+      } else {
+        setResults([]);
       }
     } catch (err) {
       console.error("Error searching:", err);
@@ -575,7 +541,7 @@ export default function SearchPage() {
           {/* Date Range Select */}
           <Select
             value={selectedDateRange}
-            onValueChange={(value) => {
+            onValueChange={(value: string) => {
               setSelectedDateRange(value);
               updateURL({ dateRange: value });
             }}
@@ -727,7 +693,7 @@ export default function SearchPage() {
                                 onClick={() => {
                                   // Force iframe reload to replay at matchup timestamp
                                   const iframe = document.getElementById(
-                                    `vod-${result.id}`,
+                                    `vod-${result.id}`
                                   ) as HTMLIFrameElement;
                                   if (iframe) {
                                     const src = iframe.src;
@@ -746,18 +712,20 @@ export default function SearchPage() {
                                 size="sm"
                                 onClick={() => {
                                   // Copy Twitch VOD URL at timestamp to clipboard
-                                  const hours = Math.floor(
-                                    result.frameTimeSeconds / 3600,
-                                  );
-                                  const minutes = Math.floor(
-                                    (result.frameTimeSeconds % 3600) / 60,
-                                  );
-                                  const seconds = Math.floor(
-                                    result.frameTimeSeconds % 60,
-                                  );
-                                  const timeString = `${hours}h${minutes}m${seconds}s`;
-                                  const url = `https://www.twitch.tv/videos/${result.vodSourceId}?t=${timeString}`;
-                                  navigator.clipboard.writeText(url);
+                                  if (result.frameTimeSeconds !== undefined) {
+                                    const hours = Math.floor(
+                                      result.frameTimeSeconds / 3600
+                                    );
+                                    const minutes = Math.floor(
+                                      (result.frameTimeSeconds % 3600) / 60
+                                    );
+                                    const seconds = Math.floor(
+                                      result.frameTimeSeconds % 60
+                                    );
+                                    const timeString = `${hours}h${minutes}m${seconds}s`;
+                                    const url = `https://www.twitch.tv/videos/${result.vodSourceId}?t=${timeString}`;
+                                    navigator.clipboard.writeText(url);
+                                  }
                                 }}
                                 className="text-foreground rounded-l-none px-2"
                                 title="Copy link at timestamp"
@@ -861,7 +829,7 @@ export default function SearchPage() {
                           onClick={() => {
                             // Force iframe reload to replay at matchup timestamp
                             const iframe = document.getElementById(
-                              `vod-${result.id}`,
+                              `vod-${result.id}`
                             ) as HTMLIFrameElement;
                             if (iframe) {
                               const src = iframe.src;
@@ -880,18 +848,20 @@ export default function SearchPage() {
                           size="sm"
                           onClick={() => {
                             // Copy Twitch VOD URL at timestamp to clipboard
-                            const hours = Math.floor(
-                              result.frameTimeSeconds / 3600,
-                            );
-                            const minutes = Math.floor(
-                              (result.frameTimeSeconds % 3600) / 60,
-                            );
-                            const seconds = Math.floor(
-                              result.frameTimeSeconds % 60,
-                            );
-                            const timeString = `${hours}h${minutes}m${seconds}s`;
-                            const url = `https://www.twitch.tv/videos/${result.vodSourceId}?t=${timeString}`;
-                            navigator.clipboard.writeText(url);
+                            if (result.frameTimeSeconds !== undefined) {
+                              const hours = Math.floor(
+                                result.frameTimeSeconds / 3600
+                              );
+                              const minutes = Math.floor(
+                                (result.frameTimeSeconds % 3600) / 60
+                              );
+                              const seconds = Math.floor(
+                                result.frameTimeSeconds % 60
+                              );
+                              const timeString = `${hours}h${minutes}m${seconds}s`;
+                              const url = `https://www.twitch.tv/videos/${result.vodSourceId}?t=${timeString}`;
+                              navigator.clipboard.writeText(url);
+                            }
                           }}
                           className="text-foreground rounded-l-none px-2"
                           title="Copy link at timestamp"

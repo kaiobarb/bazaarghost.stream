@@ -5,13 +5,19 @@ import Image from "next/image";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun } from "lucide-react";
+import { useState, useEffect } from "react";
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <nav className="border-b border-border bg-card font-serif">
@@ -34,7 +40,6 @@ export default function Navbar() {
             </h1>
           </Link>
 
-          {/* Centered Navigation Links */}
           <div className="flex items-center gap-8">
             <Link
               href="/"
@@ -56,7 +61,6 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Right side actions */}
           <div className="flex items-center gap-2">
             {/* Discord Button */}
             <Button
@@ -84,14 +88,16 @@ export default function Navbar() {
               </a>
             </Button>
 
-            {/* Theme Toggle */}
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleTheme}
               className="text-foreground hover:text-primary"
             >
-              {theme === "dark" ? (
+              {!mounted ? (
+                // Render nothing or a placeholder during SSR
+                <div className="size-5" />
+              ) : theme === "dark" ? (
                 <Sun className="size-5" />
               ) : (
                 <Moon className="size-5" />
