@@ -1,16 +1,10 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
-import {
-  Search,
-  Moon,
-  Sun,
-  Loader2,
-  Check,
-  ChevronsUpDown,
-} from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
+import { Search, Loader2, Check, ChevronsUpDown, Copy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -34,7 +28,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import Image from "next/image";
 import {
   supabase,
   type DetectionSearchView,
@@ -54,8 +47,19 @@ interface SearchResult {
   rank?: string;
 }
 
+interface StreamerWithDetections {
+  streamerId: number;
+  streamerLogin: string;
+  streamerDisplayName: string;
+  streamerAvatar: string;
+  totalDetections: number;
+  recentDetections: SearchResult[];
+}
+
 export default function SearchPage() {
-  const { theme, setTheme } = useTheme();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -71,12 +75,100 @@ export default function SearchPage() {
   const [stats, setStats] = useState({
     streamers: 0,
     vods: 0,
-    matchups: 0
+    matchups: 0,
   });
+  const [topStreamers, setTopStreamers] = useState<StreamerWithDetections[]>(
+    []
+  );
+  const [hasSearched, setHasSearched] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isUpdatingFromURL, setIsUpdatingFromURL] = useState(false);
+
+  // Function to update URL with current filters
+  const updateURL = useCallback(
+    (params: {
+      username?: string;
+      streamerId?: string | null;
+      dateRange?: string;
+    }) => {
+      // Don't update URL if we're currently syncing from URL
+      if (isUpdatingFromURL) return;
+
+      const current = new URLSearchParams(searchParams.toString());
+
+      if (params.username !== undefined) {
+        if (params.username) {
+          current.set("username", params.username);
+        } else {
+          current.delete("username");
+        }
+      }
+
+      if (params.streamerId !== undefined) {
+        if (params.streamerId) {
+          current.set("streamerId", params.streamerId);
+        } else {
+          current.delete("streamerId");
+        }
+      }
+
+      if (params.dateRange !== undefined) {
+        if (params.dateRange && params.dateRange !== "all") {
+          current.set("dateRange", params.dateRange);
+        } else {
+          current.delete("dateRange");
+        }
+      }
+
+      const search = current.toString();
+      const query = search ? `?${search}` : "";
+      router.push(`/${query}`);
+    },
+    [router, searchParams, isUpdatingFromURL]
+  );
+
+  // Initialize on mount and sync with URL params
+  useEffect(() => {
+    // Skip if we don't have streamers loaded yet
+    if (streamers.length === 0) return;
+
+    setIsUpdatingFromURL(true);
+
+    const username = searchParams.get("username");
+    const streamerId = searchParams.get("streamerId");
+    const dateRange = searchParams.get("dateRange");
+
+    // Update username
+    setSearchQuery(username || "");
+
+    // Update streamer selection
+    if (streamerId) {
+      const streamer = streamers.find((s) => s.id.toString() === streamerId);
+      if (streamer) {
+        setSelectedStreamer(streamer);
+      } else {
+        setSelectedStreamer(null);
+      }
+    } else {
+      setSelectedStreamer(null);
+    }
+
+    // Update date range
+    setSelectedDateRange(dateRange || "all");
+
+    // Mark as initialized
+    if (!isInitialized) {
+      setIsInitialized(true);
+    }
+
+    // Reset flag after a short delay to allow state updates to complete
+    const timer = setTimeout(() => setIsUpdatingFromURL(false), 50);
+    return () => clearTimeout(timer);
+  }, [searchParams, streamers, isInitialized]); // Re-run when URL params or streamers change
 
   useEffect(() => {
     fetchStreamers();
-    fetchInitialResults();
+    fetchTopStreamers();
     fetchStats();
   }, [supabase]);
 
@@ -86,7 +178,9 @@ export default function SearchPage() {
       // Limit the query for performance and use recent detections
       const { data, error } = await supabase
         .from("detection_search")
-        .select("streamer_id, streamer_login, streamer_display_name, streamer_avatar")
+        .select(
+          "streamer_id, streamer_login, streamer_display_name, streamer_avatar"
+        )
         .not("streamer_id", "is", null)
         .order("actual_timestamp", { ascending: false })
         .limit(1000); // Limit to recent detections for performance
@@ -97,7 +191,7 @@ export default function SearchPage() {
         // Create a map to get unique streamers
         const uniqueStreamersMap = new Map<number, Streamer>();
 
-        data.forEach(item => {
+        data.forEach((item) => {
           if (item.streamer_id && !uniqueStreamersMap.has(item.streamer_id)) {
             // Create a Streamer object that matches the expected type
             uniqueStreamersMap.set(item.streamer_id, {
@@ -111,18 +205,19 @@ export default function SearchPage() {
               has_vods: null,
               num_vods: null,
               num_bazaar_vods: null,
-              oldest_vod: null
+              oldest_vod: null,
             });
           }
         });
 
         // Convert map to array and sort by display_name
-        const uniqueStreamers = Array.from(uniqueStreamersMap.values())
-          .sort((a, b) => {
+        const uniqueStreamers = Array.from(uniqueStreamersMap.values()).sort(
+          (a, b) => {
             const nameA = a.display_name || a.login;
             const nameB = b.display_name || b.login;
             return nameA.localeCompare(nameB);
-          });
+          }
+        );
 
         setStreamers(uniqueStreamers);
       }
@@ -134,8 +229,7 @@ export default function SearchPage() {
   const fetchStats = async () => {
     try {
       // Call the database function via RPC for efficient server-side counting
-      const { data, error } = await supabase
-        .rpc('get_global_stats');
+      const { data, error } = await supabase.rpc("get_global_stats");
 
       if (error) throw error;
 
@@ -143,7 +237,7 @@ export default function SearchPage() {
         setStats({
           streamers: data.streamers || 0,
           vods: data.vods || 0,
-          matchups: data.matchups || 0
+          matchups: data.matchups || 0,
         });
       }
     } catch (err) {
@@ -152,33 +246,64 @@ export default function SearchPage() {
       setStats({
         streamers: 0,
         vods: 0,
-        matchups: 0
+        matchups: 0,
       });
     }
   };
 
-  const fetchInitialResults = async () => {
+  const fetchTopStreamers = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const { data, error } = await supabase
-        .from("detection_search")
-        .select("*")
-        .order("actual_timestamp", { ascending: false })
-        .limit(20);
+      const { data, error } = await supabase.rpc(
+        "get_top_streamers_with_recent_detections",
+        {
+          top_count: 10,
+          detections_per_streamer: 4,
+        }
+      );
 
       if (error) throw error;
 
       if (data) {
-        const mappedResults = mapToSearchResults(
-          data as unknown as DetectionSearchView[]
-        );
-        setResults(mappedResults);
+        // Group the flattened results by streamer
+        const streamerMap = new Map<number, StreamerWithDetections>();
+
+        data.forEach((row: any) => {
+          if (!streamerMap.has(row.streamer_id)) {
+            streamerMap.set(row.streamer_id, {
+              streamerId: row.streamer_id,
+              streamerLogin: row.streamer_login,
+              streamerDisplayName:
+                row.streamer_display_name || row.streamer_login,
+              streamerAvatar: row.streamer_avatar || "/placeholder.svg",
+              totalDetections: row.total_detections,
+              recentDetections: [],
+            });
+          }
+
+          const streamer = streamerMap.get(row.streamer_id)!;
+          streamer.recentDetections.push({
+            id: row.detection_id,
+            username: row.username,
+            streamerName: row.streamer_display_name || row.streamer_login,
+            streamerAvatar: row.streamer_avatar || "/placeholder.svg",
+            date: row.actual_timestamp,
+            vodUrl: row.vod_url || undefined,
+            vodSourceId: row.vod_source_id || undefined,
+            frameTimeSeconds: row.frame_time_seconds || undefined,
+            confidence: row.confidence ?? undefined,
+            rank: row.rank ?? undefined,
+          });
+        });
+
+        // Convert to array maintaining the order from the query
+        setTopStreamers(Array.from(streamerMap.values()));
       }
     } catch (err) {
-      console.error("Error fetching initial results:", err);
-      setError("Failed to load recent results");
+      console.error("Error fetching top streamers:", err);
+      setError("Failed to load top streamers");
     } finally {
       setIsLoading(false);
     }
@@ -268,22 +393,35 @@ export default function SearchPage() {
 
   // Debounced search - triggers after user stops typing
   useEffect(() => {
-    // Clear existing timer
-    if (searchTimer) {
-      clearTimeout(searchTimer);
+    // Determine if user has performed a search
+    const hasActiveSearch =
+      searchQuery.trim() !== "" ||
+      selectedStreamer !== null ||
+      selectedDateRange !== "all";
+
+    setHasSearched(hasActiveSearch);
+
+    if (hasActiveSearch) {
+      // Clear existing timer
+      if (searchTimer) {
+        clearTimeout(searchTimer);
+      }
+
+      // Set new timer for debounced search
+      const timer = setTimeout(() => {
+        performSearch(searchQuery);
+      }, 300);
+
+      setSearchTimer(timer);
+
+      // Cleanup
+      return () => {
+        if (timer) clearTimeout(timer);
+      };
+    } else {
+      // Clear results when no search is active
+      setResults([]);
     }
-
-    // Set new timer for debounced search
-    const timer = setTimeout(() => {
-      performSearch(searchQuery);
-    }, 300);
-
-    setSearchTimer(timer);
-
-    // Cleanup
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
   }, [searchQuery, selectedStreamer?.id, selectedDateRange]);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -295,264 +433,428 @@ export default function SearchPage() {
     setExpandedId(expandedId === id ? null : id);
   };
 
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
-
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
-      return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'm';
+      return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "m";
     } else if (num >= 1000) {
-      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+      return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
     }
     return num.toString();
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="border-b border-border bg-card">
-        <div className="mx-auto max-w-6xl px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/logo.svg"
-                alt="Logo"
-                width={40}
-                height={40}
-                className="object-contain"
-              />
-              <h1 className="text-xl font-bold text-primary">Bazaar Ghost</h1>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTheme}
-              className="text-foreground hover:text-primary"
-            >
-              {theme === "dark" ? (
-                <Sun className="size-5" />
-              ) : (
-                <Moon className="size-5" />
-              )}
-            </Button>
-          </div>
-        </div>
-      </nav>
+    <div className="mx-auto max-w-4xl px-1 py-3">
+      {/* Stats Display */}
+      <div className="text-xs text-muted-foreground font-mono mb-4 text-center">
+        tracking {formatNumber(stats.streamers)} streamers ·{" "}
+        {formatNumber(stats.vods)} vods · {formatNumber(stats.matchups)}{" "}
+        matchups
+      </div>
 
-      <div className="mx-auto max-w-4xl px-1 py-3">
-        {/* Stats Display */}
-        <div className="text-xs text-muted-foreground font-mono mb-4 text-center">
-          tracking {formatNumber(stats.streamers)} streamers · {formatNumber(stats.vods)} vods · {formatNumber(stats.matchups)} matchups
-        </div>
-
-        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="mb-8" autoComplete="off">
-          <div className="flex gap-3 items-center mb-4">
-            {/* Streamer Combobox */}
-            <Popover
-              open={openStreamerPopover}
-              onOpenChange={setOpenStreamerPopover}
-            >
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openStreamerPopover}
-                  className="w-[220px] justify-between h-14 border-border bg-card hover:bg-secondary hover:text-secondary-foreground"
-                >
-                  {selectedStreamer ? (
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage
-                          src={
-                            selectedStreamer.profile_image_url ||
-                            "/placeholder.svg"
-                          }
-                          alt={selectedStreamer.display_name || ""}
-                        />
-                        <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                          {selectedStreamer.display_name?.[0]?.toUpperCase() ||
-                            "S"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="truncate">
-                        {selectedStreamer.display_name}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">Any Streamer</span>
-                  )}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[220px] p-0">
-                <Command>
-                  <CommandInput placeholder="Search streamers..." />
-                  <CommandList>
-                    <CommandEmpty>No streamer found.</CommandEmpty>
-                    <CommandGroup>
+      {/* Search Bar */}
+      <form onSubmit={handleSearch} className="mb-8" autoComplete="off">
+        <div className="flex gap-3 items-center mb-4">
+          {/* Streamer Combobox */}
+          <Popover
+            open={openStreamerPopover}
+            onOpenChange={setOpenStreamerPopover}
+          >
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={openStreamerPopover}
+                className="w-[220px] justify-between h-14 border-border bg-card hover:bg-secondary hover:text-secondary-foreground"
+              >
+                {selectedStreamer ? (
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage
+                        src={
+                          selectedStreamer.profile_image_url ||
+                          "/placeholder.svg"
+                        }
+                        alt={selectedStreamer.display_name || ""}
+                      />
+                      <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                        {selectedStreamer.display_name?.[0]?.toUpperCase() ||
+                          "S"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate">
+                      {selectedStreamer.display_name}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">Any Streamer</span>
+                )}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[220px] p-0">
+              <Command>
+                <CommandInput placeholder="Search streamers..." />
+                <CommandList>
+                  <CommandEmpty>No streamer found.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      onSelect={() => {
+                        setSelectedStreamer(null);
+                        setOpenStreamerPopover(false);
+                        updateURL({ streamerId: null });
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <Check
+                        className={`mr-2 h-4 w-4 ${
+                          selectedStreamer === null
+                            ? "opacity-100"
+                            : "opacity-0"
+                        }`}
+                      />
+                      <span>Any Streamer</span>
+                    </CommandItem>
+                    {streamers.map((streamer) => (
                       <CommandItem
+                        key={streamer.id}
+                        value={streamer.display_name || ""}
                         onSelect={() => {
-                          setSelectedStreamer(null);
+                          setSelectedStreamer(streamer);
                           setOpenStreamerPopover(false);
+                          updateURL({ streamerId: streamer.id.toString() });
                         }}
                         className="cursor-pointer"
                       >
                         <Check
                           className={`mr-2 h-4 w-4 ${
-                            selectedStreamer === null
+                            selectedStreamer?.id === streamer.id
                               ? "opacity-100"
                               : "opacity-0"
                           }`}
                         />
-                        <span>Any Streamer</span>
-                      </CommandItem>
-                      {streamers.map((streamer) => (
-                        <CommandItem
-                          key={streamer.id}
-                          value={streamer.display_name || ""}
-                          onSelect={() => {
-                            setSelectedStreamer(streamer);
-                            setOpenStreamerPopover(false);
-                          }}
-                          className="cursor-pointer"
-                        >
-                          <Check
-                            className={`mr-2 h-4 w-4 ${
-                              selectedStreamer?.id === streamer.id
-                                ? "opacity-100"
-                                : "opacity-0"
-                            }`}
+                        <Avatar className="h-8 w-8 mr-2">
+                          <AvatarImage
+                            src={
+                              streamer.profile_image_url || "/placeholder.svg"
+                            }
+                            alt={streamer.display_name || ""}
                           />
-                          <Avatar className="h-8 w-8 mr-2">
-                            <AvatarImage
-                              src={
-                                streamer.profile_image_url || "/placeholder.svg"
-                              }
-                              alt={streamer.display_name || ""}
-                            />
-                            <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                              {streamer.display_name?.[0]?.toUpperCase() || "S"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span>{streamer.display_name}</span>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+                          <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                            {streamer.display_name?.[0]?.toUpperCase() || "S"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span>{streamer.display_name}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
 
-            {/* VS Separator */}
-            <span className="text-muted-foreground font-medium">vs</span>
+          {/* VS Separator */}
+          <span className="text-muted-foreground font-medium">vs</span>
 
-            {/* Username Search Input */}
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Enter username..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                autoComplete="on"
-                className="h-14 pl-12 pr-4 text-lg border-border bg-card placeholder:text-muted-foreground focus-visible:ring-primary"
-              />
-              {isLoading && (
-                <Loader2 className="absolute right-4 top-1/2 size-5 -translate-y-1/2 animate-spin text-muted-foreground" />
-              )}
-            </div>
-
-            {/* Date Range Select */}
-            <Select
-              value={selectedDateRange}
-              onValueChange={setSelectedDateRange}
-            >
-              <SelectTrigger className="w-[150px] h-14 border-border bg-card">
-                <SelectValue placeholder="All Time" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                <SelectItem value="week">Past Week</SelectItem>
-                <SelectItem value="month">Past Month</SelectItem>
-                <SelectItem value="year">Past Year</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Username Search Input */}
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Enter username..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onBlur={(e) => updateURL({ username: e.target.value })}
+              autoComplete="on"
+              className="h-14 pl-12 pr-4 text-lg border-border bg-card placeholder:text-muted-foreground focus-visible:ring-primary"
+            />
+            {isLoading && (
+              <Loader2 className="absolute right-4 top-1/2 size-5 -translate-y-1/2 animate-spin text-muted-foreground" />
+            )}
           </div>
-        </form>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 rounded-md border border-red-500 bg-red-50 p-4 text-red-700">
-            {error}
-          </div>
-        )}
+          {/* Date Range Select */}
+          <Select
+            value={selectedDateRange}
+            onValueChange={(value) => {
+              setSelectedDateRange(value);
+              updateURL({ dateRange: value });
+            }}
+          >
+            <SelectTrigger className="w-[150px] h-14 border-border bg-card">
+              <SelectValue placeholder="All Time" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
+              <SelectItem value="week">Past Week</SelectItem>
+              <SelectItem value="month">Past Month</SelectItem>
+              <SelectItem value="year">Past Year</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </form>
 
-        {/* Loading State */}
-        {isLoading && results.length === 0 && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="size-8 animate-spin text-muted-foreground" />
-          </div>
-        )}
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 rounded-md border border-destructive bg-destructive/10 p-4 text-destructive">
+          {error}
+        </div>
+      )}
 
-        {/* Search Results */}
-        {!isLoading && results.length > 0 && (
-          <div className="space-y-2">
-            {results.map((result) => (
-              <div
-                key={result.id}
-                className="overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-primary/50"
-              >
-                <button
-                  onClick={() => toggleExpand(result.id)}
-                  className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-secondary/50"
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="size-8 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {/* Top Streamers Section - Landing Page */}
+      {!isLoading && !hasSearched && topStreamers.length > 0 && (
+        <div className="space-y-8">
+          {topStreamers.map((streamer) => (
+            <div key={streamer.streamerId} className="space-y-3">
+              {/* Streamer Header */}
+              <div className="px-2">
+                <Button
+                  variant="ghost"
+                  className="justify-start p-2 h-auto hover:bg-secondary/50"
+                  onClick={() => {
+                    // Create a Streamer object from the StreamerWithDetections data
+                    const streamerObj: Streamer = {
+                      id: streamer.streamerId,
+                      login: streamer.streamerLogin,
+                      display_name: streamer.streamerDisplayName,
+                      profile_image_url: streamer.streamerAvatar,
+                      processing_enabled: true,
+                      created_at: null,
+                      updated_at: null,
+                      has_vods: null,
+                      num_vods: null,
+                      num_bazaar_vods: null,
+                      oldest_vod: null,
+                    };
+                    setSelectedStreamer(streamerObj);
+                    setOpenStreamerPopover(false);
+                    updateURL({ streamerId: streamer.streamerId.toString() });
+                  }}
                 >
-                  <Avatar className="size-10 shrink-0">
-                    <AvatarImage
-                      src={result.streamerAvatar || "/placeholder.svg"}
-                      alt={result.streamerName}
-                    />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {result.streamerName[0]?.toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 text-foreground">
-                    <span className="font-medium">{result.streamerName}</span>
-                    <span className="text-muted-foreground"> vs </span>
-                    {result.rank && (
-                      <Image
-                        src={`/${result.rank.toLowerCase()}.webp`}
-                        alt={result.rank}
-                        width={32}
-                        height={32}
-                        className="mr-1 inline-block"
+                  <div className="flex items-center gap-3">
+                    <Avatar className="size-12">
+                      <AvatarImage
+                        src={streamer.streamerAvatar}
+                        alt={streamer.streamerDisplayName}
                       />
-                    )}
-                    <span className="font-medium">{result.username}</span>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-1">
-                    <div className="shrink-0 text-sm text-muted-foreground">
-                      {new Date(result.date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {streamer.streamerDisplayName[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="text-left">
+                      <h2 className="text-lg font-semibold text-foreground">
+                        {streamer.streamerDisplayName}
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        {formatNumber(streamer.totalDetections)} matchups
+                      </p>
                     </div>
-                    {result.confidence && (
-                      <div className="text-xs text-muted-foreground">
-                        {Math.round(result.confidence * 100)}% confidence
-                      </div>
-                    )}
                   </div>
-                </button>
+                </Button>
+              </div>
 
-                {/* Expanded VOD Embed */}
-                {expandedId === result.id &&
-                  result.vodSourceId &&
-                  result.frameTimeSeconds !== undefined && (
-                    <div className="border-t border-border p-4">
-                      <div className="mb-2 flex items-center justify-between">
+              {/* Recent Detections List */}
+              <div className="space-y-2">
+                {streamer.recentDetections.map((result) => (
+                  <div
+                    key={result.id}
+                    className="overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-primary/50"
+                  >
+                    <button
+                      onClick={() => toggleExpand(result.id)}
+                      className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-secondary/50"
+                    >
+                      <Avatar className="size-10 shrink-0">
+                        <AvatarImage
+                          src={result.streamerAvatar || "/placeholder.svg"}
+                          alt={result.streamerName}
+                        />
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          {result.streamerName[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 text-foreground">
+                        <span className="font-medium font-inter">
+                          {result.streamerName}
+                        </span>
+                        <span className="text-muted-foreground"> vs </span>
+                        {result.rank && (
+                          <Image
+                            src={`/${result.rank.toLowerCase()}.webp`}
+                            alt={result.rank}
+                            width={32}
+                            height={32}
+                            className="mr-1 inline-block"
+                          />
+                        )}
+                        <span className="font-medium font-inter">
+                          {result.username}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="shrink-0 text-sm text-muted-foreground">
+                          {new Date(result.date).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </div>
+                        {result.confidence && (
+                          <div className="text-xs text-muted-foreground">
+                            {Math.round(result.confidence * 100)}% confidence
+                          </div>
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Expanded VOD Embed */}
+                    {expandedId === result.id &&
+                      result.vodSourceId &&
+                      result.frameTimeSeconds !== undefined && (
+                        <div className="border-t border-border p-4">
+                          <div className="mb-2 flex items-center justify-between">
+                            <div className="flex">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  // Force iframe reload to replay at matchup timestamp
+                                  const iframe = document.getElementById(
+                                    `vod-${result.id}`
+                                  ) as HTMLIFrameElement;
+                                  if (iframe) {
+                                    const src = iframe.src;
+                                    iframe.src = "";
+                                    setTimeout(() => {
+                                      iframe.src = src;
+                                    }, 0);
+                                  }
+                                }}
+                                className="text-foreground rounded-r-none border-r-0"
+                              >
+                                Go to Timestamp
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  // Copy Twitch VOD URL at timestamp to clipboard
+                                  const hours = Math.floor(
+                                    result.frameTimeSeconds / 3600
+                                  );
+                                  const minutes = Math.floor(
+                                    (result.frameTimeSeconds % 3600) / 60
+                                  );
+                                  const seconds = Math.floor(
+                                    result.frameTimeSeconds % 60
+                                  );
+                                  const timeString = `${hours}h${minutes}m${seconds}s`;
+                                  const url = `https://www.twitch.tv/videos/${result.vodSourceId}?t=${timeString}`;
+                                  navigator.clipboard.writeText(url);
+                                }}
+                                className="text-foreground rounded-l-none px-2"
+                                title="Copy link at timestamp"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="aspect-video w-full rounded-md overflow-hidden">
+                            <iframe
+                              id={`vod-${result.id}`}
+                              src={`https://player.twitch.tv/?video=${
+                                result.vodSourceId
+                              }&parent=${
+                                typeof window !== "undefined"
+                                  ? window.location.hostname
+                                  : "localhost"
+                              }&time=${result.frameTimeSeconds}s&autoplay=true`}
+                              height="100%"
+                              width="100%"
+                              allowFullScreen
+                              className="w-full h-full"
+                            />
+                          </div>
+                        </div>
+                      )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Search Results */}
+      {!isLoading && hasSearched && results.length > 0 && (
+        <div className="space-y-2">
+          {results.map((result) => (
+            <div
+              key={result.id}
+              className="overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-primary/50"
+            >
+              <button
+                onClick={() => toggleExpand(result.id)}
+                className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-secondary/50"
+              >
+                <Avatar className="size-10 shrink-0">
+                  <AvatarImage
+                    src={result.streamerAvatar || "/placeholder.svg"}
+                    alt={result.streamerName}
+                  />
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {result.streamerName[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 text-foreground">
+                  <span className="font-medium font-inter text-800">
+                    {result.streamerName}
+                  </span>
+                  <span className="text-muted-foreground"> vs </span>
+                  {result.rank && (
+                    <Image
+                      src={`/${result.rank.toLowerCase()}.webp`}
+                      alt={result.rank}
+                      width={32}
+                      height={32}
+                      className="mr-1 inline-block"
+                    />
+                  )}
+                  <span className="font-medium font-inter">
+                    {result.username}
+                  </span>
+                </div>
+
+                <div className="flex flex-col items-end gap-1">
+                  <div className="shrink-0 text-sm text-muted-foreground">
+                    {new Date(result.date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </div>
+                  {result.confidence && (
+                    <div className="text-xs text-muted-foreground">
+                      {Math.round(result.confidence * 100)}% confidence
+                    </div>
+                  )}
+                </div>
+              </button>
+
+              {/* Expanded VOD Embed */}
+              {expandedId === result.id &&
+                result.vodSourceId &&
+                result.frameTimeSeconds !== undefined && (
+                  <div className="border-t border-border p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="flex">
                         <Button
                           variant="outline"
                           size="sm"
@@ -569,43 +871,66 @@ export default function SearchPage() {
                               }, 0);
                             }
                           }}
-                          className="text-foreground"
+                          className="text-foreground rounded-r-none border-r-0"
                         >
-                          Replay at Matchup
+                          Go to Timestamp
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            // Copy Twitch VOD URL at timestamp to clipboard
+                            const hours = Math.floor(
+                              result.frameTimeSeconds / 3600
+                            );
+                            const minutes = Math.floor(
+                              (result.frameTimeSeconds % 3600) / 60
+                            );
+                            const seconds = Math.floor(
+                              result.frameTimeSeconds % 60
+                            );
+                            const timeString = `${hours}h${minutes}m${seconds}s`;
+                            const url = `https://www.twitch.tv/videos/${result.vodSourceId}?t=${timeString}`;
+                            navigator.clipboard.writeText(url);
+                          }}
+                          className="text-foreground rounded-l-none px-2"
+                          title="Copy link at timestamp"
+                        >
+                          <Copy className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="aspect-video w-full rounded-md overflow-hidden">
-                        <iframe
-                          id={`vod-${result.id}`}
-                          src={`https://player.twitch.tv/?video=${
-                            result.vodSourceId
-                          }&parent=${
-                            typeof window !== "undefined"
-                              ? window.location.hostname
-                              : "localhost"
-                          }&time=${result.frameTimeSeconds}s&autoplay=true`}
-                          height="100%"
-                          width="100%"
-                          allowFullScreen
-                          className="w-full h-full"
-                        />
-                      </div>
                     </div>
-                  )}
-              </div>
-            ))}
-          </div>
-        )}
+                    <div className="aspect-video w-full rounded-md overflow-hidden">
+                      <iframe
+                        id={`vod-${result.id}`}
+                        src={`https://player.twitch.tv/?video=${
+                          result.vodSourceId
+                        }&parent=${
+                          typeof window !== "undefined"
+                            ? window.location.hostname
+                            : "localhost"
+                        }&time=${result.frameTimeSeconds}s&autoplay=true`}
+                        height="100%"
+                        width="100%"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
+                    </div>
+                  </div>
+                )}
+            </div>
+          ))}
+        </div>
+      )}
 
-        {/* Empty State */}
-        {!isLoading && results.length === 0 && (
-          <div className="py-12 text-center text-muted-foreground">
-            {searchQuery
-              ? `No results found for "${searchQuery}"`
-              : "No matches found. Try searching for a username."}
-          </div>
-        )}
-      </div>
+      {/* Empty State */}
+      {!isLoading && hasSearched && results.length === 0 && (
+        <div className="py-12 text-center text-muted-foreground">
+          {searchQuery
+            ? `No results found for "${searchQuery}"`
+            : "No matches found. Try adjusting your filters."}
+        </div>
+      )}
     </div>
   );
 }

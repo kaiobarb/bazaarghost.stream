@@ -4,25 +4,25 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Light mode design system - default */
-  --background: #ffffff;
+  /* Light mode design system - cream-based palette */
+  --background: #fcf9ea;
   --foreground: #1a1a1a;
-  --card: #f5f5f5;
+  --card: #faf6e8;
   --card-foreground: #1a1a1a;
-  --popover: #ffffff;
+  --popover: #fcf9ea;
   --popover-foreground: #1a1a1a;
   --primary: #ff9933;
   --primary-foreground: #ffffff;
-  --secondary: #e5e5e5;
+  --secondary: #f0e9d8;
   --secondary-foreground: #1a1a1a;
-  --muted: #e5e5e5;
-  --muted-foreground: #666666;
+  --muted: #f0e9d8;
+  --muted-foreground: #5a5a5a;
   --accent: #ff9933;
   --accent-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #e5e5e5;
-  --input: #f5f5f5;
+  --border: #e8dfc8;
+  --input: #faf6e8;
   --ring: #ff9933;
   --chart-1: #ff9933;
   --chart-2: #ffb366;
@@ -30,13 +30,13 @@
   --chart-4: #ff8000;
   --chart-5: #e68a2e;
   --radius: 0.5rem;
-  --sidebar: #ffffff;
+  --sidebar: #fcf9ea;
   --sidebar-foreground: #1a1a1a;
   --sidebar-primary: #ff9933;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e5e5e5;
+  --sidebar-accent: #f0e9d8;
   --sidebar-accent-foreground: #ff9933;
-  --sidebar-border: #e5e5e5;
+  --sidebar-border: #e8dfc8;
   --sidebar-ring: #ff9933;
   --shadow-x: 0px;
   --shadow-y: 1px;
@@ -89,7 +89,7 @@
 }
 
 @theme inline {
-  --font-sans: "Inter", "Inter Fallback";
+  --font-sans: var(--font-inter), serif, ui-sans-serif, system-ui;
   --font-mono: "Geist Mono", "Geist Mono Fallback";
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -127,26 +127,58 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-serif: "Source Serif 4", "Source Serif 4 Fallback";
+  --font-serif: var(--font-averia-libre), "Source Serif 4",
+    "Source Serif 4 Fallback";
   /* computed shadow variables below - do not modify */
   --shadow-2xs: var(--shadow-x) var(--shadow-y)
-    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
-  --shadow-xs: var(--shadow-x) var(--shadow-y) var(--shadow-blur) var(--shadow-spread)
-    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
-  --shadow-sm: var(--shadow-x) var(--shadow-y) calc(var(--shadow-blur) * 1.5) var(--shadow-spread)
-    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
-  --shadow-md: calc(var(--shadow-x) * 2) calc(var(--shadow-y) * 2) calc(var(--shadow-blur) * 3)
-    calc(var(--shadow-spread) - 1px)
-    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
-  --shadow-lg: calc(var(--shadow-x) * 4) calc(var(--shadow-y) * 4) calc(var(--shadow-blur) * 5)
-    calc(var(--shadow-spread) - 3px)
-    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
-  --shadow-xl: calc(var(--shadow-x) * 6) calc(var(--shadow-y) * 6) calc(var(--shadow-blur) * 7)
-    calc(var(--shadow-spread) - 5px)
-    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
-  --shadow-2xl: calc(var(--shadow-x) * 8) calc(var(--shadow-y) * 8) calc(max(0px, var(--shadow-blur) * 9 - 8px))
+    color-mix(
+      in srgb,
+      var(--shadow-color) calc(var(--shadow-opacity) * 100%),
+      transparent
+    );
+  --shadow-xs: var(--shadow-x) var(--shadow-y) var(--shadow-blur)
+    var(--shadow-spread)
+    color-mix(
+      in srgb,
+      var(--shadow-color) calc(var(--shadow-opacity) * 100%),
+      transparent
+    );
+  --shadow-sm: var(--shadow-x) var(--shadow-y) calc(var(--shadow-blur) * 1.5)
+    var(--shadow-spread)
+    color-mix(
+      in srgb,
+      var(--shadow-color) calc(var(--shadow-opacity) * 100%),
+      transparent
+    );
+  --shadow-md: calc(var(--shadow-x) * 2) calc(var(--shadow-y) * 2)
+    calc(var(--shadow-blur) * 3) calc(var(--shadow-spread) - 1px)
+    color-mix(
+      in srgb,
+      var(--shadow-color) calc(var(--shadow-opacity) * 100%),
+      transparent
+    );
+  --shadow-lg: calc(var(--shadow-x) * 4) calc(var(--shadow-y) * 4)
+    calc(var(--shadow-blur) * 5) calc(var(--shadow-spread) - 3px)
+    color-mix(
+      in srgb,
+      var(--shadow-color) calc(var(--shadow-opacity) * 100%),
+      transparent
+    );
+  --shadow-xl: calc(var(--shadow-x) * 6) calc(var(--shadow-y) * 6)
+    calc(var(--shadow-blur) * 7) calc(var(--shadow-spread) - 5px)
+    color-mix(
+      in srgb,
+      var(--shadow-color) calc(var(--shadow-opacity) * 100%),
+      transparent
+    );
+  --shadow-2xl: calc(var(--shadow-x) * 8) calc(var(--shadow-y) * 8)
+    calc(max(0px, var(--shadow-blur) * 9 - 8px))
     calc(var(--shadow-spread) - 12px)
-    color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 250%), transparent);
+    color-mix(
+      in srgb,
+      var(--shadow-color) calc(var(--shadow-opacity) * 250%),
+      transparent
+    );
   --shadow: var(--shadow-md);
   --color-shadow-color: var(--shadow-color);
   --shadow-opacity: var(--shadow-opacity);
@@ -162,5 +194,14 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .font-inter {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  }
+  .font-averia {
+    font-family: var(--font-averia-libre), serif, ui-serif, Georgia;
   }
 }

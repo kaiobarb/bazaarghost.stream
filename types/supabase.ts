@@ -460,6 +460,75 @@ export type Database = {
           },
         ]
       }
+      detections_with_streamer_vods: {
+        Row: {
+          chunk_id: string | null
+          confidence: number | null
+          created_at: string | null
+          frame_time_seconds: number | null
+          id: string | null
+          no_right_edge: boolean | null
+          published_at: string | null
+          rank: string | null
+          storage_path: string | null
+          streamer_id: number | null
+          streamer_login: string | null
+          username: string | null
+          vod_id: number | null
+          vod_title: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "detections_chunk_id_fkey"
+            columns: ["chunk_id"]
+            isOneToOne: false
+            referencedRelation: "chunks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "detections_vod_id_fkey"
+            columns: ["vod_id"]
+            isOneToOne: false
+            referencedRelation: "detection_search"
+            referencedColumns: ["vod_id"]
+          },
+          {
+            foreignKeyName: "detections_vod_id_fkey"
+            columns: ["vod_id"]
+            isOneToOne: false
+            referencedRelation: "vod_stats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "detections_vod_id_fkey"
+            columns: ["vod_id"]
+            isOneToOne: false
+            referencedRelation: "vods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vods_streamer_id_fkey"
+            columns: ["streamer_id"]
+            isOneToOne: false
+            referencedRelation: "detection_search"
+            referencedColumns: ["streamer_id"]
+          },
+          {
+            foreignKeyName: "vods_streamer_id_fkey"
+            columns: ["streamer_id"]
+            isOneToOne: false
+            referencedRelation: "streamer_detection_stats"
+            referencedColumns: ["streamer_id"]
+          },
+          {
+            foreignKeyName: "vods_streamer_id_fkey"
+            columns: ["streamer_id"]
+            isOneToOne: false
+            referencedRelation: "streamers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       streamer_detection_stats: {
         Row: {
           avg_confidence: number | null
