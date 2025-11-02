@@ -82,7 +82,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <meta name="apple-mobile-web-app-title" content="BazaarGhost" />
-      <body className={`antialiased font-sans ${inter.variable} ${averiaLibre.variable}`}>
+      <body
+        className={`antialiased font-sans ${inter.variable} ${averiaLibre.variable}`}
+      >
         <ThemeProvider>
           <div className="min-h-screen bg-background">
             <Navbar />

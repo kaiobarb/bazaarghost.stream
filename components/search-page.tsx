@@ -64,7 +64,7 @@ export default function SearchPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedStreamer, setSelectedStreamer] = useState<Streamer | null>(
-    null
+    null,
   );
   const [selectedDateRange, setSelectedDateRange] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(false);
@@ -78,7 +78,7 @@ export default function SearchPage() {
     matchups: 0,
   });
   const [topStreamers, setTopStreamers] = useState<StreamerWithDetections[]>(
-    []
+    [],
   );
   const [hasSearched, setHasSearched] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -124,7 +124,7 @@ export default function SearchPage() {
       const query = search ? `?${search}` : "";
       router.push(`/${query}`);
     },
-    [router, searchParams, isUpdatingFromURL]
+    [router, searchParams, isUpdatingFromURL],
   );
 
   // Initialize on mount and sync with URL params
@@ -179,7 +179,7 @@ export default function SearchPage() {
       const { data, error } = await supabase
         .from("detection_search")
         .select(
-          "streamer_id, streamer_login, streamer_display_name, streamer_avatar"
+          "streamer_id, streamer_login, streamer_display_name, streamer_avatar",
         )
         .not("streamer_id", "is", null)
         .order("actual_timestamp", { ascending: false })
@@ -216,7 +216,7 @@ export default function SearchPage() {
             const nameA = a.display_name || a.login;
             const nameB = b.display_name || b.login;
             return nameA.localeCompare(nameB);
-          }
+          },
         );
 
         setStreamers(uniqueStreamers);
@@ -261,7 +261,7 @@ export default function SearchPage() {
         {
           top_count: 10,
           detections_per_streamer: 4,
-        }
+        },
       );
 
       if (error) throw error;
@@ -364,7 +364,7 @@ export default function SearchPage() {
         // Filter by actual_timestamp which includes frame offset
         queryBuilder = queryBuilder.gte(
           "actual_timestamp",
-          dateFrom.toISOString()
+          dateFrom.toISOString(),
         );
       }
 
@@ -379,7 +379,7 @@ export default function SearchPage() {
 
       if (data) {
         const mappedResults = mapToSearchResults(
-          data as unknown as DetectionSearchView[]
+          data as unknown as DetectionSearchView[],
         );
         setResults(mappedResults);
       }
@@ -727,7 +727,7 @@ export default function SearchPage() {
                                 onClick={() => {
                                   // Force iframe reload to replay at matchup timestamp
                                   const iframe = document.getElementById(
-                                    `vod-${result.id}`
+                                    `vod-${result.id}`,
                                   ) as HTMLIFrameElement;
                                   if (iframe) {
                                     const src = iframe.src;
@@ -747,13 +747,13 @@ export default function SearchPage() {
                                 onClick={() => {
                                   // Copy Twitch VOD URL at timestamp to clipboard
                                   const hours = Math.floor(
-                                    result.frameTimeSeconds / 3600
+                                    result.frameTimeSeconds / 3600,
                                   );
                                   const minutes = Math.floor(
-                                    (result.frameTimeSeconds % 3600) / 60
+                                    (result.frameTimeSeconds % 3600) / 60,
                                   );
                                   const seconds = Math.floor(
-                                    result.frameTimeSeconds % 60
+                                    result.frameTimeSeconds % 60,
                                   );
                                   const timeString = `${hours}h${minutes}m${seconds}s`;
                                   const url = `https://www.twitch.tv/videos/${result.vodSourceId}?t=${timeString}`;
@@ -861,7 +861,7 @@ export default function SearchPage() {
                           onClick={() => {
                             // Force iframe reload to replay at matchup timestamp
                             const iframe = document.getElementById(
-                              `vod-${result.id}`
+                              `vod-${result.id}`,
                             ) as HTMLIFrameElement;
                             if (iframe) {
                               const src = iframe.src;
@@ -881,13 +881,13 @@ export default function SearchPage() {
                           onClick={() => {
                             // Copy Twitch VOD URL at timestamp to clipboard
                             const hours = Math.floor(
-                              result.frameTimeSeconds / 3600
+                              result.frameTimeSeconds / 3600,
                             );
                             const minutes = Math.floor(
-                              (result.frameTimeSeconds % 3600) / 60
+                              (result.frameTimeSeconds % 3600) / 60,
                             );
                             const seconds = Math.floor(
-                              result.frameTimeSeconds % 60
+                              result.frameTimeSeconds % 60,
                             );
                             const timeString = `${hours}h${minutes}m${seconds}s`;
                             const url = `https://www.twitch.tv/videos/${result.vodSourceId}?t=${timeString}`;

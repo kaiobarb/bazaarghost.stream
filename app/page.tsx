@@ -1,10 +1,10 @@
-import { Suspense } from "react"
-import SearchPage from "@/components/search-page"
+import { Suspense } from "react";
+import SearchPage from "@/components/search-page";
 
 export default function Home() {
   return (
     <Suspense fallback={<div />}>
       <SearchPage />
     </Suspense>
-  )
+  );
 }

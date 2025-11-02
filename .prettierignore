@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Version control
+.git/
+
+# IDE
+.vscode/
+.idea/
+
+# Ignore SQL files
+*.sql
+.ignore/
+
+# Public assets
+public/Averia_Libre/
