@@ -9,13 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -63,7 +56,6 @@ export default function SearchPage() {
   const [selectedStreamer, setSelectedStreamer] = useState<Streamer | null>(
     null
   );
-  const [selectedDateRange, setSelectedDateRange] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamers, setStreamers] = useState<Streamer[]>([]);
@@ -86,7 +78,6 @@ export default function SearchPage() {
     (params: {
       username?: string;
       streamerId?: string | null;
-      dateRange?: string;
     }) => {
       // Don't update URL if we're currently syncing from URL
       if (isUpdatingFromURL) return;
@@ -109,14 +100,6 @@ export default function SearchPage() {
         }
       }
 
-      if (params.dateRange !== undefined) {
-        if (params.dateRange && params.dateRange !== "all") {
-          current.set("dateRange", params.dateRange);
-        } else {
-          current.delete("dateRange");
-        }
-      }
-
       const search = current.toString();
       const query = search ? `?${search}` : "";
       router.push(`/${query}`);
@@ -133,7 +116,6 @@ export default function SearchPage() {
 
     const username = searchParams.get("username");
     const streamerId = searchParams.get("streamerId");
-    const dateRange = searchParams.get("dateRange");
 
     // Update username
     setSearchQuery(username || "");
@@ -149,9 +131,6 @@ export default function SearchPage() {
     } else {
       setSelectedStreamer(null);
     }
-
-    // Update date range
-    setSelectedDateRange(dateRange || "all");
 
     // Mark as initialized
     if (!isInitialized) {
@@ -321,7 +300,7 @@ export default function SearchPage() {
       const { data, error } = await supabase.rpc("fuzzy_search_detections", {
         search_query: query.trim() || undefined,
         streamer_id_filter: selectedStreamer?.id || undefined,
-        date_range_filter: selectedDateRange,
+        date_range_filter: "all",
         similarity_threshold: 0.25, // Only return results with > 45% similarity
         result_limit: 20,
       });
@@ -362,8 +341,7 @@ export default function SearchPage() {
     // Determine if user has performed a search
     const hasActiveSearch =
       searchQuery.trim() !== "" ||
-      selectedStreamer !== null ||
-      selectedDateRange !== "all";
+      selectedStreamer !== null;
 
     setHasSearched(hasActiveSearch);
 
@@ -388,7 +366,7 @@ export default function SearchPage() {
       // Clear results when no search is active
       setResults([]);
     }
-  }, [searchQuery, selectedStreamer?.id, selectedDateRange]);
+  }, [searchQuery, selectedStreamer?.id]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -537,25 +515,6 @@ export default function SearchPage() {
               <Loader2 className="absolute right-4 top-1/2 size-5 -translate-y-1/2 animate-spin text-muted-foreground" />
             )}
           </div>
-
-          {/* Date Range Select */}
-          <Select
-            value={selectedDateRange}
-            onValueChange={(value: string) => {
-              setSelectedDateRange(value);
-              updateURL({ dateRange: value });
-            }}
-          >
-            <SelectTrigger className="w-[150px] h-14 border-border bg-card">
-              <SelectValue placeholder="All Time" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Time</SelectItem>
-              <SelectItem value="week">Past Week</SelectItem>
-              <SelectItem value="month">Past Month</SelectItem>
-              <SelectItem value="year">Past Year</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </form>
 
