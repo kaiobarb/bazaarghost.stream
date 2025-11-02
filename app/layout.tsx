@@ -1,6 +1,7 @@
 import type React from "react";
 import type { Metadata } from "next";
 
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import Navbar from "@/components/navbar";
@@ -89,6 +90,7 @@ export default function RootLayout({
           <div className="min-h-screen bg-background">
             <Navbar />
             {children}
+            <SpeedInsights />
           </div>
         </ThemeProvider>
         <Analytics />
