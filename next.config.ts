@@ -1,8 +1,18 @@
 import type { NextConfig } from "next";
+import createMDX from "@next/mdx";
 
 const nextConfig: NextConfig = {
-  output: "export",
-  images: { unoptimized: true },
+  // output: "export", // Forces static HTML export
+  // images: { unoptimized: true },
+  pageExtensions: ["ts", "tsx", "js", "jsx", "md", "mdx"],
 };
 
-export default nextConfig;
+const withMDX = createMDX({
+  // Markdown options
+  options: {
+    remarkPlugins: [],
+    rehypePlugins: [],
+  },
+});
+
+export default withMDX(nextConfig);
