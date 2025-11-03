@@ -24,11 +24,13 @@ import {
 import { supabase } from "@/lib/supabase-client";
 import type { Database, Tables } from "@/types/supabase";
 
-type Streamer = Tables<'streamers'>;
+type Streamer = Tables<"streamers">;
 
 // Use actual database function return types instead of ad-hoc interfaces
-type SearchResult = Database['public']['Functions']['fuzzy_search_detections']['Returns'][number];
-type TopStreamerDetection = Database['public']['Functions']['get_top_streamers_with_recent_detections']['Returns'][number];
+type SearchResult =
+  Database["public"]["Functions"]["fuzzy_search_detections"]["Returns"][number];
+type TopStreamerDetection =
+  Database["public"]["Functions"]["get_top_streamers_with_recent_detections"]["Returns"][number];
 
 // Group top streamers by their streamer_id for display
 interface StreamerWithDetections {
@@ -77,10 +79,7 @@ export default function SearchPage({
 
   // Function to update URL with current filters
   const updateURL = useCallback(
-    (params: {
-      username?: string;
-      streamerId?: string | null;
-    }) => {
+    (params: { username?: string; streamerId?: string | null }) => {
       // Don't update URL if we're currently syncing from URL
       if (isUpdatingFromURL) return;
 
@@ -323,8 +322,7 @@ export default function SearchPage({
   useEffect(() => {
     // Determine if user has performed a search
     const hasActiveSearch =
-      searchQuery.trim() !== "" ||
-      selectedStreamer !== null;
+      searchQuery.trim() !== "" || selectedStreamer !== null;
 
     setHasSearched(hasActiveSearch);
 
@@ -370,7 +368,7 @@ export default function SearchPage({
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-1 py-3">
+    <div className="mx-auto max-w-4xl md:px-1 py-3">
       {/* Stats Display */}
       <div className="text-xs text-muted-foreground font-mono mb-4 text-center">
         tracking {formatNumber(stats.streamers)} streamers ·{" "}
@@ -380,7 +378,7 @@ export default function SearchPage({
 
       {/* Search Bar */}
       <form onSubmit={handleSearch} className="mb-8" autoComplete="off">
-        <div className="flex gap-3 items-center mb-4">
+        <div className="flex gap-1 md:gap-3 items-center mb-4">
           {/* Streamer Combobox */}
           <Popover
             open={openStreamerPopover}
@@ -391,11 +389,11 @@ export default function SearchPage({
                 variant="outline"
                 role="combobox"
                 aria-expanded={openStreamerPopover}
-                className="w-[220px] justify-between h-14 border-border bg-card hover:bg-secondary hover:text-secondary-foreground"
+                className="justify-between h-14 border-border bg-card hover:bg-secondary hover:text-secondary-foreground"
               >
                 {selectedStreamer ? (
                   <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
+                    <Avatar className="md:h-6 md:w-6">
                       <AvatarImage
                         src={
                           selectedStreamer.profile_image_url ||
@@ -408,17 +406,19 @@ export default function SearchPage({
                           "S"}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="truncate">
+                    <span className="truncate hidden md:inline">
                       {selectedStreamer.display_name}
                     </span>
                   </div>
                 ) : (
-                  <span className="text-muted-foreground">Any Streamer</span>
+                  <span className="text-muted-foreground text-xs md:text-sm">
+                    Any
+                  </span>
                 )}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                <ChevronsUpDown className="ml-1 md:ml-2 h-4 w-4 shrink-0 opacity-50 hidden md:inline" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[220px] p-0">
+            <PopoverContent className="w-full md:w-[220px] p-0">
               <Command>
                 <CommandInput placeholder="Search streamers..." />
                 <CommandList>
@@ -587,38 +587,42 @@ export default function SearchPage({
                           {result.streamer_display_name[0]?.toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1 text-foreground">
-                        <span className="font-medium font-inter">
-                          {result.streamer_display_name}
-                        </span>
-                        <span className="text-muted-foreground"> vs </span>
-                        {result.rank && (
-                          <Image
-                            src={`/${result.rank.toLowerCase()}.webp`}
-                            alt={result.rank}
-                            width={32}
-                            height={32}
-                            className="mr-1 inline-block"
-                          />
-                        )}
-                        <span className="font-medium font-inter">
-                          {result.username}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="shrink-0 text-sm text-muted-foreground">
-                          {new Date(result.actual_timestamp).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
+                      <div className="flex flex-col md:flex-row w-full md:items-center">
+                        <div className="flex md:flex-1 gap-1 text-foreground">
+                          <span className="font-medium font-inter">
+                            {result.streamer_display_name}
+                          </span>
+                          <span className="text-muted-foreground"> vs </span>
+                          {result.rank && (
+                            <Image
+                              src={`/${result.rank.toLowerCase()}.webp`}
+                              alt={result.rank}
+                              width={32}
+                              height={32}
+                              className="inline-block"
+                            />
+                          )}
+                          <span className="font-medium font-inter">
+                            {result.username}
+                          </span>
                         </div>
-                        {result.confidence && (
-                          <div className="text-xs text-muted-foreground">
-                            {Math.round(result.confidence * 100)}% confidence
+
+                        <div className="md:items-end flex shrink-0 flex-row md:flex-col gap-3 md:gap-1">
+                          <div className="shrink-0 text-sm text-muted-foreground">
+                            {new Date(
+                              result.actual_timestamp
+                            ).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
                           </div>
-                        )}
+                          {result.confidence && (
+                            <div className="text-sm md:text-xs text-muted-foreground">
+                              {Math.round(result.confidence * 100)}% confidence
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </button>
 
@@ -626,8 +630,8 @@ export default function SearchPage({
                     {expandedId === result.detection_id &&
                       result.vod_source_id &&
                       result.frame_time_seconds !== undefined && (
-                        <div className="border-t border-border p-4">
-                          <div className="mb-2 flex items-center justify-between">
+                        <div className="border-t border-border md:p-4">
+                          <div className="mt-4 md:mt-0 mb-4 md:mb-2 ml-4 md:ml-0 flex items-center justify-between">
                             <div className="flex">
                               <Button
                                 variant="outline"
@@ -645,7 +649,7 @@ export default function SearchPage({
                                     }, 0);
                                   }
                                 }}
-                                className="text-foreground rounded-r-none border-r-0"
+                                className="text-foreground rounded-r-none border-r-0 p-6 md:p-4"
                               >
                                 Go to Timestamp
                               </Button>
@@ -669,7 +673,7 @@ export default function SearchPage({
                                     navigator.clipboard.writeText(url);
                                   }
                                 }}
-                                className="text-foreground rounded-l-none px-2"
+                                className="text-foreground rounded-l-none p-6 md:px-4 md:py-4"
                                 title="Copy link at timestamp"
                               >
                                 <Copy className="h-4 w-4" />
@@ -744,11 +748,14 @@ export default function SearchPage({
 
                 <div className="flex flex-col items-end gap-1">
                   <div className="shrink-0 text-sm text-muted-foreground">
-                    {new Date(result.actual_timestamp).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {new Date(result.actual_timestamp).toLocaleDateString(
+                      "en-US",
+                      {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      }
+                    )}
                   </div>
                   {result.confidence && (
                     <div className="text-xs text-muted-foreground">
@@ -762,7 +769,7 @@ export default function SearchPage({
               {expandedId === result.detection_id &&
                 result.vod_source_id &&
                 result.frame_time_seconds !== undefined && (
-                  <div className="border-t border-border p-4">
+                  <div className="border-t border-border md:p-4">
                     <div className="mb-2 flex items-center justify-between">
                       <div className="flex">
                         <Button

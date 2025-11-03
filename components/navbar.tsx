@@ -131,8 +131,7 @@ export default function Navbar() {
               <SheetHeader>
                 <SheetTitle className="text-left font-serif">Menu</SheetTitle>
               </SheetHeader>
-
-              <div className="mt-6 flex flex-col gap-4">
+              <div className="flex flex-col gap-4">
                 {/* Mobile Navigation Links */}
                 <Link
                   href="/"
