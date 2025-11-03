@@ -21,32 +21,38 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { supabase, type Streamer } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase-client";
+import type { Database, Tables } from "@/types/supabase";
 
-interface SearchResult {
-  id: string;
-  streamerName: string;
-  streamerAvatar: string;
-  username: string;
-  date: string;
-  vodUrl?: string;
-  vodSourceId?: string;
-  frameTimeSeconds?: number;
-  confidence?: number;
-  rank?: string;
-  similarityScore?: number;
-}
+type Streamer = Tables<'streamers'>;
 
+// Use actual database function return types instead of ad-hoc interfaces
+type SearchResult = Database['public']['Functions']['fuzzy_search_detections']['Returns'][number];
+type TopStreamerDetection = Database['public']['Functions']['get_top_streamers_with_recent_detections']['Returns'][number];
+
+// Group top streamers by their streamer_id for display
 interface StreamerWithDetections {
-  streamerId: number;
-  streamerLogin: string;
-  streamerDisplayName: string;
-  streamerAvatar: string;
-  totalDetections: number;
-  recentDetections: SearchResult[];
+  streamer_id: number;
+  streamer_login: string;
+  streamer_display_name: string;
+  streamer_avatar: string;
+  total_detections: number;
+  recentDetections: TopStreamerDetection[];
 }
 
-export default function SearchPage() {
+interface SearchPageProps {
+  initialStats?: {
+    streamers: number;
+    vods: number;
+    matchups: number;
+  };
+  initialTopStreamers?: any[];
+}
+
+export default function SearchPage({
+  initialStats = { streamers: 0, vods: 0, matchups: 0 },
+  initialTopStreamers = [],
+}: SearchPageProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -61,13 +67,9 @@ export default function SearchPage() {
   const [streamers, setStreamers] = useState<Streamer[]>([]);
   const [searchTimer, setSearchTimer] = useState<NodeJS.Timeout | null>(null);
   const [openStreamerPopover, setOpenStreamerPopover] = useState(false);
-  const [stats, setStats] = useState({
-    streamers: 0,
-    vods: 0,
-    matchups: 0,
-  });
+  const [stats, setStats] = useState(initialStats);
   const [topStreamers, setTopStreamers] = useState<StreamerWithDetections[]>(
-    []
+    initialTopStreamers as StreamerWithDetections[]
   );
   const [hasSearched, setHasSearched] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -144,8 +146,14 @@ export default function SearchPage() {
 
   useEffect(() => {
     fetchStreamers();
-    fetchTopStreamers();
-    fetchStats();
+    // Only fetch top streamers and stats if we don't have initial data
+    // This avoids redundant fetches on initial page load with ISR
+    if (initialTopStreamers.length === 0) {
+      fetchTopStreamers();
+    }
+    if (initialStats.streamers === 0) {
+      fetchStats();
+    }
   }, [supabase]);
 
   const fetchStreamers = async () => {
@@ -167,7 +175,7 @@ export default function SearchPage() {
         // Create a map to get unique streamers
         const uniqueStreamersMap = new Map<number, Streamer>();
 
-        data.forEach((item) => {
+        data.forEach((item: any) => {
           if (item.streamer_id && !uniqueStreamersMap.has(item.streamer_id)) {
             // Create a Streamer object that matches the expected type
             uniqueStreamersMap.set(item.streamer_id, {
@@ -255,29 +263,19 @@ export default function SearchPage() {
         data.forEach((row: any) => {
           if (!streamerMap.has(row.streamer_id)) {
             streamerMap.set(row.streamer_id, {
-              streamerId: row.streamer_id,
-              streamerLogin: row.streamer_login,
-              streamerDisplayName:
+              streamer_id: row.streamer_id,
+              streamer_login: row.streamer_login,
+              streamer_display_name:
                 row.streamer_display_name || row.streamer_login,
-              streamerAvatar: row.streamer_avatar || "/placeholder.svg",
-              totalDetections: row.total_detections,
+              streamer_avatar: row.streamer_avatar || "/placeholder.svg",
+              total_detections: row.total_detections,
               recentDetections: [],
             });
           }
 
           const streamer = streamerMap.get(row.streamer_id)!;
-          streamer.recentDetections.push({
-            id: row.detection_id,
-            username: row.username,
-            streamerName: row.streamer_display_name || row.streamer_login,
-            streamerAvatar: row.streamer_avatar || "/placeholder.svg",
-            date: row.actual_timestamp,
-            vodUrl: row.vod_url || undefined,
-            vodSourceId: row.vod_source_id || undefined,
-            frameTimeSeconds: row.frame_time_seconds || undefined,
-            confidence: row.confidence ?? undefined,
-            rank: row.rank ?? undefined,
-          });
+          // Push the raw row data - it already matches TopStreamerDetection type
+          streamer.recentDetections.push(row);
         });
 
         // Convert to array maintaining the order from the query
@@ -308,23 +306,8 @@ export default function SearchPage() {
       if (error) throw error;
 
       if (data && Array.isArray(data)) {
-        // Map the RPC results to SearchResult format
-        const mappedResults: SearchResult[] = data.map((item) => ({
-          id: item.detection_id,
-          username: item.username,
-          streamerName:
-            item.streamer_display_name || item.streamer_login || "Unknown",
-          streamerAvatar: item.streamer_avatar || "/placeholder.svg",
-          date: item.actual_timestamp,
-          vodUrl: item.vod_url || undefined,
-          vodSourceId: item.vod_source_id || undefined,
-          frameTimeSeconds: item.frame_time_seconds || undefined,
-          confidence: item.confidence ?? undefined,
-          rank: item.rank ?? undefined,
-          similarityScore: item.similarity_score,
-        }));
-
-        setResults(mappedResults);
+        // Data already matches SearchResult type - no mapping needed
+        setResults(data);
       } else {
         setResults([]);
       }
@@ -536,7 +519,7 @@ export default function SearchPage() {
       {!isLoading && !hasSearched && topStreamers.length > 0 && (
         <div className="space-y-8">
           {topStreamers.map((streamer) => (
-            <div key={streamer.streamerId} className="space-y-3">
+            <div key={streamer.streamer_id} className="space-y-3">
               {/* Streamer Header */}
               <div className="px-2">
                 <Button
@@ -545,10 +528,10 @@ export default function SearchPage() {
                   onClick={() => {
                     // Create a Streamer object from the StreamerWithDetections data
                     const streamerObj: Streamer = {
-                      id: streamer.streamerId,
-                      login: streamer.streamerLogin,
-                      display_name: streamer.streamerDisplayName,
-                      profile_image_url: streamer.streamerAvatar,
+                      id: streamer.streamer_id,
+                      login: streamer.streamer_login,
+                      display_name: streamer.streamer_display_name,
+                      profile_image_url: streamer.streamer_avatar,
                       processing_enabled: true,
                       created_at: null,
                       updated_at: null,
@@ -559,25 +542,25 @@ export default function SearchPage() {
                     };
                     setSelectedStreamer(streamerObj);
                     setOpenStreamerPopover(false);
-                    updateURL({ streamerId: streamer.streamerId.toString() });
+                    updateURL({ streamerId: streamer.streamer_id.toString() });
                   }}
                 >
                   <div className="flex items-center gap-3">
                     <Avatar className="size-12">
                       <AvatarImage
-                        src={streamer.streamerAvatar}
-                        alt={streamer.streamerDisplayName}
+                        src={streamer.streamer_avatar}
+                        alt={streamer.streamer_display_name}
                       />
                       <AvatarFallback className="bg-primary text-primary-foreground">
-                        {streamer.streamerDisplayName[0]?.toUpperCase()}
+                        {streamer.streamer_display_name[0]?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="text-left">
                       <h2 className="text-lg font-semibold text-foreground">
-                        {streamer.streamerDisplayName}
+                        {streamer.streamer_display_name}
                       </h2>
                       <p className="text-sm text-muted-foreground">
-                        {formatNumber(streamer.totalDetections)} matchups
+                        {formatNumber(streamer.total_detections)} matchups
                       </p>
                     </div>
                   </div>
@@ -588,25 +571,25 @@ export default function SearchPage() {
               <div className="space-y-2">
                 {streamer.recentDetections.map((result) => (
                   <div
-                    key={result.id}
+                    key={result.detection_id}
                     className="overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-primary/50"
                   >
                     <button
-                      onClick={() => toggleExpand(result.id)}
+                      onClick={() => toggleExpand(result.detection_id)}
                       className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-secondary/50"
                     >
                       <Avatar className="size-10 shrink-0">
                         <AvatarImage
-                          src={result.streamerAvatar || "/placeholder.svg"}
-                          alt={result.streamerName}
+                          src={result.streamer_avatar || "/placeholder.svg"}
+                          alt={result.streamer_display_name}
                         />
                         <AvatarFallback className="bg-primary text-primary-foreground">
-                          {result.streamerName[0]?.toUpperCase()}
+                          {result.streamer_display_name[0]?.toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 text-foreground">
                         <span className="font-medium font-inter">
-                          {result.streamerName}
+                          {result.streamer_display_name}
                         </span>
                         <span className="text-muted-foreground"> vs </span>
                         {result.rank && (
@@ -625,7 +608,7 @@ export default function SearchPage() {
 
                       <div className="flex flex-col items-end gap-1">
                         <div className="shrink-0 text-sm text-muted-foreground">
-                          {new Date(result.date).toLocaleDateString("en-US", {
+                          {new Date(result.actual_timestamp).toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
                             year: "numeric",
@@ -640,9 +623,9 @@ export default function SearchPage() {
                     </button>
 
                     {/* Expanded VOD Embed */}
-                    {expandedId === result.id &&
-                      result.vodSourceId &&
-                      result.frameTimeSeconds !== undefined && (
+                    {expandedId === result.detection_id &&
+                      result.vod_source_id &&
+                      result.frame_time_seconds !== undefined && (
                         <div className="border-t border-border p-4">
                           <div className="mb-2 flex items-center justify-between">
                             <div className="flex">
@@ -652,7 +635,7 @@ export default function SearchPage() {
                                 onClick={() => {
                                   // Force iframe reload to replay at matchup timestamp
                                   const iframe = document.getElementById(
-                                    `vod-${result.id}`
+                                    `vod-${result.detection_id}`
                                   ) as HTMLIFrameElement;
                                   if (iframe) {
                                     const src = iframe.src;
@@ -671,18 +654,18 @@ export default function SearchPage() {
                                 size="sm"
                                 onClick={() => {
                                   // Copy Twitch VOD URL at timestamp to clipboard
-                                  if (result.frameTimeSeconds !== undefined) {
+                                  if (result.frame_time_seconds !== undefined) {
                                     const hours = Math.floor(
-                                      result.frameTimeSeconds / 3600
+                                      result.frame_time_seconds / 3600
                                     );
                                     const minutes = Math.floor(
-                                      (result.frameTimeSeconds % 3600) / 60
+                                      (result.frame_time_seconds % 3600) / 60
                                     );
                                     const seconds = Math.floor(
-                                      result.frameTimeSeconds % 60
+                                      result.frame_time_seconds % 60
                                     );
                                     const timeString = `${hours}h${minutes}m${seconds}s`;
-                                    const url = `https://www.twitch.tv/videos/${result.vodSourceId}?t=${timeString}`;
+                                    const url = `https://www.twitch.tv/videos/${result.vod_source_id}?t=${timeString}`;
                                     navigator.clipboard.writeText(url);
                                   }
                                 }}
@@ -695,14 +678,14 @@ export default function SearchPage() {
                           </div>
                           <div className="aspect-video w-full rounded-md overflow-hidden">
                             <iframe
-                              id={`vod-${result.id}`}
+                              id={`vod-${result.detection_id}`}
                               src={`https://player.twitch.tv/?video=${
-                                result.vodSourceId
+                                result.vod_source_id
                               }&parent=${
                                 typeof window !== "undefined"
                                   ? window.location.hostname
                                   : "localhost"
-                              }&time=${result.frameTimeSeconds}s&autoplay=true`}
+                              }&time=${result.frame_time_seconds}s&autoplay=true`}
                               height="100%"
                               width="100%"
                               allowFullScreen
@@ -724,25 +707,25 @@ export default function SearchPage() {
         <div className="space-y-2">
           {results.map((result) => (
             <div
-              key={result.id}
+              key={result.detection_id}
               className="overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-primary/50"
             >
               <button
-                onClick={() => toggleExpand(result.id)}
+                onClick={() => toggleExpand(result.detection_id)}
                 className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-secondary/50"
               >
                 <Avatar className="size-10 shrink-0">
                   <AvatarImage
-                    src={result.streamerAvatar || "/placeholder.svg"}
-                    alt={result.streamerName}
+                    src={result.streamer_avatar || "/placeholder.svg"}
+                    alt={result.streamer_display_name}
                   />
                   <AvatarFallback className="bg-primary text-primary-foreground">
-                    {result.streamerName[0]?.toUpperCase()}
+                    {result.streamer_display_name[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 text-foreground">
                   <span className="font-medium font-inter text-800">
-                    {result.streamerName}
+                    {result.streamer_display_name}
                   </span>
                   <span className="text-muted-foreground"> vs </span>
                   {result.rank && (
@@ -761,7 +744,7 @@ export default function SearchPage() {
 
                 <div className="flex flex-col items-end gap-1">
                   <div className="shrink-0 text-sm text-muted-foreground">
-                    {new Date(result.date).toLocaleDateString("en-US", {
+                    {new Date(result.actual_timestamp).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                       year: "numeric",
@@ -776,9 +759,9 @@ export default function SearchPage() {
               </button>
 
               {/* Expanded VOD Embed */}
-              {expandedId === result.id &&
-                result.vodSourceId &&
-                result.frameTimeSeconds !== undefined && (
+              {expandedId === result.detection_id &&
+                result.vod_source_id &&
+                result.frame_time_seconds !== undefined && (
                   <div className="border-t border-border p-4">
                     <div className="mb-2 flex items-center justify-between">
                       <div className="flex">
@@ -788,7 +771,7 @@ export default function SearchPage() {
                           onClick={() => {
                             // Force iframe reload to replay at matchup timestamp
                             const iframe = document.getElementById(
-                              `vod-${result.id}`
+                              `vod-${result.detection_id}`
                             ) as HTMLIFrameElement;
                             if (iframe) {
                               const src = iframe.src;
@@ -807,18 +790,18 @@ export default function SearchPage() {
                           size="sm"
                           onClick={() => {
                             // Copy Twitch VOD URL at timestamp to clipboard
-                            if (result.frameTimeSeconds !== undefined) {
+                            if (result.frame_time_seconds !== undefined) {
                               const hours = Math.floor(
-                                result.frameTimeSeconds / 3600
+                                result.frame_time_seconds / 3600
                               );
                               const minutes = Math.floor(
-                                (result.frameTimeSeconds % 3600) / 60
+                                (result.frame_time_seconds % 3600) / 60
                               );
                               const seconds = Math.floor(
-                                result.frameTimeSeconds % 60
+                                result.frame_time_seconds % 60
                               );
                               const timeString = `${hours}h${minutes}m${seconds}s`;
-                              const url = `https://www.twitch.tv/videos/${result.vodSourceId}?t=${timeString}`;
+                              const url = `https://www.twitch.tv/videos/${result.vod_source_id}?t=${timeString}`;
                               navigator.clipboard.writeText(url);
                             }
                           }}
@@ -831,14 +814,14 @@ export default function SearchPage() {
                     </div>
                     <div className="aspect-video w-full rounded-md overflow-hidden">
                       <iframe
-                        id={`vod-${result.id}`}
+                        id={`vod-${result.detection_id}`}
                         src={`https://player.twitch.tv/?video=${
-                          result.vodSourceId
+                          result.vod_source_id
                         }&parent=${
                           typeof window !== "undefined"
                             ? window.location.hostname
                             : "localhost"
-                        }&time=${result.frameTimeSeconds}s&autoplay=true`}
+                        }&time=${result.frame_time_seconds}s&autoplay=true`}
                         height="100%"
                         width="100%"
                         allowFullScreen
