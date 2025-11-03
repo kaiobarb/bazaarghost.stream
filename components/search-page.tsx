@@ -411,8 +411,8 @@ export default function SearchPage({
                     </span>
                   </div>
                 ) : (
-                  <span className="text-muted-foreground text-xs md:text-sm">
-                    Any
+                  <span className="text-muted-foreground text-sm">
+                    Any <span className="hidden md:inline">Streamer</span>
                   </span>
                 )}
                 <ChevronsUpDown className="ml-1 md:ml-2 h-4 w-4 shrink-0 opacity-50 hidden md:inline" />

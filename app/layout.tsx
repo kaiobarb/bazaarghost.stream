@@ -7,12 +7,17 @@ import { ThemeProvider } from "@/components/theme-provider";
 import Navbar from "@/components/navbar";
 import "./globals.css";
 
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import localFont from "next/font/local";
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
 });
 
 const averiaLibre = localFont({
@@ -65,7 +70,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <meta name="apple-mobile-web-app-title" content="BazaarGhost" />
       <body
-        className={`antialiased font-sans ${inter.variable} ${averiaLibre.variable}`}
+        className={`antialiased font-sans ${inter.variable} ${jetbrainsMono.variable} ${averiaLibre.variable}`}
       >
         <ThemeProvider>
           <div className="min-h-screen bg-background">
