@@ -77,6 +77,7 @@ export async function getTopStreamers() {
             row.streamer_display_name || row.streamer_login,
           streamer_avatar: row.streamer_avatar || "/placeholder.svg",
           total_detections: row.total_detections,
+          total_vods: row.total_vods,
           recentDetections: [],
         });
       }

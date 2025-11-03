@@ -39,6 +39,7 @@ interface StreamerWithDetections {
   streamer_display_name: string;
   streamer_avatar: string;
   total_detections: number;
+  total_vods: number;
   recentDetections: TopStreamerDetection[];
 }
 
@@ -268,6 +269,7 @@ export default function SearchPage({
                 row.streamer_display_name || row.streamer_login,
               streamer_avatar: row.streamer_avatar || "/placeholder.svg",
               total_detections: row.total_detections,
+              total_vods: row.total_vods,
               recentDetections: [],
             });
           }
@@ -560,7 +562,8 @@ export default function SearchPage({
                         {streamer.streamer_display_name}
                       </h2>
                       <p className="text-sm text-muted-foreground">
-                        {formatNumber(streamer.total_detections)} matchups
+                        {formatNumber(streamer.total_detections)} matchups across{" "}
+                        {formatNumber(streamer.total_vods)} VODs
                       </p>
                     </div>
                   </div>

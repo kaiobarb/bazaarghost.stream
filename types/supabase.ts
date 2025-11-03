@@ -692,6 +692,7 @@ export type Database = {
           streamer_id: number
           streamer_login: string
           total_detections: number
+          total_vods: number
           username: string
           vod_id: number
           vod_source_id: string
