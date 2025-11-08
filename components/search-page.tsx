@@ -23,6 +23,7 @@ import {
 import { supabase } from "@/lib/supabase-client";
 import type { Database, Tables } from "@/types/supabase";
 import { DetectionCard } from "@/components/detection-card";
+import { DetectionCardSkeletonList } from "@/components/detection-card-skeleton";
 
 type Streamer = Tables<"streamers">;
 
@@ -167,7 +168,7 @@ export default function SearchPage({
         )
         .not("streamer_id", "is", null)
         .order("actual_timestamp", { ascending: false })
-        .limit(1000); // Limit to recent detections for performance
+        .limit(300);
 
       if (error) throw error;
 
@@ -562,8 +563,8 @@ export default function SearchPage({
                         {streamer.streamer_display_name}
                       </h2>
                       <p className="text-sm text-muted-foreground">
-                        {formatNumber(streamer.total_detections)} matchups across{" "}
-                        {formatNumber(streamer.total_vods)} VODs
+                        {formatNumber(streamer.total_detections)} matchups
+                        across {formatNumber(streamer.total_vods)} VODs
                       </p>
                     </div>
                   </div>

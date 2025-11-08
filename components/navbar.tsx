@@ -38,6 +38,7 @@ export default function Navbar() {
           >
             <Image
               src="/logo.svg"
+              priority
               alt="Logo"
               width={40}
               height={40}
@@ -72,11 +73,12 @@ export default function Navbar() {
               href="/donate"
               className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors flex items-center gap-1"
             >
-              <span className="animate-shake-fade inline-block">
-                $
-              </span>
+              <span className="animate-shake-fade inline-block">$</span>
               <span>Donate</span>
-              <span className="animate-shake-fade inline-block" style={{ animationDelay: '0.3s' }}>
+              <span
+                className="animate-shake-fade inline-block"
+                style={{ animationDelay: "0.3s" }}
+              >
                 $
               </span>
             </Link>
@@ -171,9 +173,7 @@ export default function Navbar() {
                   onClick={() => setIsOpen(false)}
                   className="text-lg font-medium text-foreground/70 hover:text-foreground transition-colors flex items-center gap-1"
                 >
-                  <span className="animate-shake-fade inline-block">
-                    $
-                  </span>
+                  <span className="animate-shake-fade inline-block">$</span>
                   <span>Donate</span>
                   <span
                     className="animate-shake-fade inline-block"
