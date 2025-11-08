@@ -1,0 +1,34 @@
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import Link from "next/link";
+
+The support for Bazaar Ghost has been overwhelmingly positive, and already **thousands** have visited the site. While that is awesome,
+it does mean that running the site will cost more than I initially predicted for what was a little hobby/side project.
+
+As a certified ad-hater, I'd rather avoid going down that route for as long as possible. Donating to my Ko-fi helps me cover operational
+costs while keeping the site ad-free.
+
+Since you're reading this, thank you for even considering to tip--Bazaar Ghost is a free community tool, and any donation will be put right
+back into the costs of running and improving the site.
+
+\<3 Liftaris
+
+<Button
+  asChild
+  className="text-white font-semibold text-base font-inter no-underline"
+>
+  <Link
+    href="https://ko-fi.com/B0B71O1JSX"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    <Image
+      src="/kofi_symbol.webp"
+      alt="Ko-fi"
+      width={24}
+      height={24}
+      className="mr-2 font-sans"
+    />
+    Buy me a Gumball on Ko-fi
+  </Link>
+</Button>

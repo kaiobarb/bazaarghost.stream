@@ -205,4 +205,91 @@
   .font-averia {
     font-family: var(--font-averia-libre), serif, ui-serif, Georgia;
   }
+
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0) rotate(0deg);
+    }
+    10% {
+      transform: translateX(-2px) rotate(-5deg);
+    }
+    20% {
+      transform: translateX(2px) rotate(5deg);
+    }
+    30% {
+      transform: translateX(-2px) rotate(-5deg);
+    }
+    40% {
+      transform: translateX(2px) rotate(5deg);
+    }
+    50% {
+      transform: translateX(-1px) rotate(-3deg);
+    }
+    60% {
+      transform: translateX(1px) rotate(3deg);
+    }
+    70% {
+      transform: translateX(-1px) rotate(-3deg);
+    }
+    80% {
+      transform: translateX(1px) rotate(3deg);
+    }
+    90% {
+      transform: translateX(0) rotate(0deg);
+    }
+  }
+
+  @keyframes shakeAndFade {
+    0%,
+    10%,
+    20%,
+    30%,
+    40%,
+    50%,
+    60%,
+    70%,
+    80% {
+      opacity: 1;
+    }
+    0%,
+    20%,
+    40%,
+    60%,
+    80% {
+      transform: translateX(0) rotate(0deg);
+    }
+    5%,
+    15%,
+    25%,
+    35%,
+    45%,
+    55%,
+    65%,
+    75% {
+      transform: translateX(-2px) rotate(-5deg);
+    }
+    10%,
+    30%,
+    50%,
+    70% {
+      transform: translateX(2px) rotate(5deg);
+    }
+    90% {
+      opacity: 1;
+      transform: translateX(0) rotate(0deg);
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(0) rotate(0deg) scale(0);
+    }
+  }
+
+  .animate-shake {
+    animation: shake 2s ease-in-out infinite;
+  }
+
+  .animate-shake-fade {
+    animation: shakeAndFade 10s ease-in-out forwards;
+  }
 }

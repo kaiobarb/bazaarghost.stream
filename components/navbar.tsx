@@ -68,6 +68,18 @@ export default function Navbar() {
             >
               Contact
             </Link>
+            <Link
+              href="/donate"
+              className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors flex items-center gap-1"
+            >
+              <span className="animate-shake-fade inline-block">
+                $
+              </span>
+              <span>Donate</span>
+              <span className="animate-shake-fade inline-block" style={{ animationDelay: '0.3s' }}>
+                $
+              </span>
+            </Link>
           </div>
 
           {/* Desktop Actions - Hidden on mobile */}
@@ -153,6 +165,22 @@ export default function Navbar() {
                   className="text-lg font-medium text-foreground/70 hover:text-foreground transition-colors"
                 >
                   Contact
+                </Link>
+                <Link
+                  href="/donate"
+                  onClick={() => setIsOpen(false)}
+                  className="text-lg font-medium text-foreground/70 hover:text-foreground transition-colors flex items-center gap-1"
+                >
+                  <span className="animate-shake-fade inline-block">
+                    $
+                  </span>
+                  <span>Donate</span>
+                  <span
+                    className="animate-shake-fade inline-block"
+                    style={{ animationDelay: "0.3s" }}
+                  >
+                    $
+                  </span>
                 </Link>
 
                 {/* Divider */}
