@@ -1,5 +1,5 @@
 import type React from "react";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -57,8 +57,88 @@ const averiaLibre = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "BazaarGhost",
-  description: "Search for Bazaar ghost matchups against streamers",
+  metadataBase: new URL("https://bazaarghost.stream"),
+  title: {
+    default: "BazaarGhost - Bazaar Matchup Search",
+    template: "%s | BazaarGhost",
+  },
+  description:
+    "Search and discover Bazaar ghost matchups from thousands of Twitch VODs. Find when streamers played against specific opponents.",
+  keywords: [
+    "Bazaar",
+    "ghost matchups",
+    "Twitch VODs",
+    "streamers",
+    "gaming",
+    "matchup search",
+    "BazaarGhost",
+  ],
+  authors: [{ name: "BazaarGhost" }],
+  creator: "BazaarGhost",
+  publisher: "BazaarGhost",
+
+  // Open Graph
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://bazaarghost.stream",
+    siteName: "BazaarGhost",
+    title: "BazaarGhost - Bazaar Matchup Search",
+    description:
+      "Search and discover Bazaar ghost matchups from thousands of Twitch VODs",
+    images: [
+      {
+        url: "/logo.png",
+        width: 512,
+        height: 512,
+        alt: "BazaarGhost Logo",
+      },
+    ],
+  },
+
+  // Twitter Card
+  twitter: {
+    card: "summary",
+    title: "BazaarGhost - Bazaar Matchup Search",
+    description:
+      "Search and discover Bazaar ghost matchups from thousands of Twitch VODs",
+    images: ["/logo.png"],
+  },
+
+  // Icons - Next.js will auto-generate link tags from files in /app
+  icons: {
+    icon: [
+      { url: "/icon0.svg", type: "image/svg+xml" },
+      { url: "/icon1.png", type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
+
+  // Manifest
+  manifest: "/manifest.json",
+
+  // Robots
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fcf9ea" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a1a1a" },
+  ],
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -68,7 +148,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <meta name="apple-mobile-web-app-title" content="BazaarGhost" />
       <body
         className={`antialiased font-sans ${inter.variable} ${jetbrainsMono.variable} ${averiaLibre.variable}`}
       >
