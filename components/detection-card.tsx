@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Copy } from "lucide-react";
+import { Copy, RotateCw } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useTwitchPlayer } from "@/hooks/useTwitchPlayer";
+import { secondsToTwitchTimestamp } from "@/lib/utils";
 import type { Database } from "@/types/supabase";
 
 // Union type for both search result types
@@ -15,13 +18,60 @@ interface DetectionCardProps {
   result: DetectionResult;
   expandedId: string | null;
   onToggleExpand: (id: string) => void;
+  isFirstResult?: boolean;
 }
 
 export function DetectionCard({
   result,
   expandedId,
   onToggleExpand,
+  isFirstResult = false,
 }: DetectionCardProps) {
+  const [refreshKey, setRefreshKey] = useState(0);
+  const containerId = `player-${result.detection_id}`;
+  const isExpanded = expandedId === result.detection_id;
+
+  // Only render player for first result (preload) or when expanded
+  const shouldRenderPlayer = isFirstResult || isExpanded;
+
+  // Use the Twitch Player API hook
+  const { isReady, play, pause, seek, error } = useTwitchPlayer({
+    containerId,
+    videoId: result.vod_source_id,
+    timestamp: result.frame_time_seconds || 0,
+    autoplay: false, // We'll control playback manually
+    shouldRender: shouldRenderPlayer && !!result.vod_source_id,
+    refreshKey, // Pass refresh key to force re-initialization
+  });
+
+  // Control playback based on expansion state
+  useEffect(() => {
+    if (!isReady) return;
+
+    if (isExpanded) {
+      // Card is expanded - play the video
+      setTimeout(() => play(), 199);
+    } else {
+      // Card is collapsed - pause the video
+      pause();
+    }
+  }, [isReady, isExpanded, play, pause]);
+
+  // Special handling for preloaded results - seek to timestamp and pause if not expanded
+  useEffect(() => {
+    if (!isReady || !isFirstResult) return;
+
+    // Preloaded result: seek to timestamp immediately so it's ready when expanded
+    if (result.frame_time_seconds !== undefined) {
+      seek(result.frame_time_seconds);
+    }
+
+    // If preloaded but not expanded, pause it immediately
+    if (!isExpanded) {
+      pause();
+    }
+  }, [isReady, isFirstResult, isExpanded, result.frame_time_seconds, seek, pause]);
+
   return (
     <div
       key={result.detection_id}
@@ -79,74 +129,79 @@ export function DetectionCard({
       </button>
 
       {/* Expanded VOD Embed */}
-      {expandedId === result.detection_id &&
+      {/* Render player for first result (preload) or when expanded */}
+      {shouldRenderPlayer &&
         result.vod_source_id &&
         result.frame_time_seconds !== undefined && (
-          <div className="border-t border-border md:p-4">
-            <div className="mt-4 md:mt-0 mb-4 md:mb-2 ml-4 md:ml-0 flex items-center justify-between">
-              <div className="flex">
+          <div
+            className={
+              isExpanded
+                ? "border-t border-border md:p-4"
+                : isFirstResult
+                  ? "hidden"
+                  : ""
+            }
+          >
+            {isExpanded && (
+              <div className="mt-4 md:mt-0 mb-4 md:mb-2 ml-4 md:ml-0 flex items-center justify-between">
+                <div className="flex">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Seek to the original timestamp
+                      if (result.frame_time_seconds !== undefined) {
+                        seek(result.frame_time_seconds);
+                      }
+                    }}
+                    className="text-foreground rounded-r-none border-r-0 p-6 md:p-4"
+                    aria-label="Jump to the exact moment of the matchup in the video"
+                  >
+                    Go to Timestamp
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Copy Twitch VOD URL at timestamp to clipboard
+                      if (result.frame_time_seconds !== undefined) {
+                        const timeString = secondsToTwitchTimestamp(
+                          result.frame_time_seconds
+                        );
+                        const url = `https://www.twitch.tv/videos/${result.vod_source_id}?t=${timeString}`;
+                        navigator.clipboard.writeText(url);
+                      }
+                    }}
+                    className="text-foreground rounded-l-none p-6 md:px-4 md:py-4"
+                    title="Copy link at timestamp"
+                    aria-label="Copy Twitch VOD link at this timestamp to clipboard"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   onClick={() => {
-                    // Force iframe reload to replay at matchup timestamp
-                    const iframe = document.getElementById(
-                      `vod-${result.detection_id}`
-                    ) as HTMLIFrameElement;
-                    if (iframe) {
-                      const src = iframe.src;
-                      iframe.src = "";
-                      setTimeout(() => {
-                        iframe.src = src;
-                      }, 0);
-                    }
+                    // Increment refresh key to force hook re-initialization
+                    setRefreshKey(prev => prev + 1);
                   }}
-                  className="text-foreground rounded-r-none border-r-0 p-6 md:p-4"
+                  className="text-muted-foreground hover:text-foreground p-2 mr-4 md:mr-0"
+                  title="Refresh player"
+                  aria-label="Refresh the video player if it's not loading properly"
                 >
-                  Go to Timestamp
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    // Copy Twitch VOD URL at timestamp to clipboard
-                    if (result.frame_time_seconds !== undefined) {
-                      const hours = Math.floor(
-                        result.frame_time_seconds / 3600
-                      );
-                      const minutes = Math.floor(
-                        (result.frame_time_seconds % 3600) / 60
-                      );
-                      const seconds = Math.floor(
-                        result.frame_time_seconds % 60
-                      );
-                      const timeString = `${hours}h${minutes}m${seconds}s`;
-                      const url = `https://www.twitch.tv/videos/${result.vod_source_id}?t=${timeString}`;
-                      navigator.clipboard.writeText(url);
-                    }
-                  }}
-                  className="text-foreground rounded-l-none p-6 md:px-4 md:py-4"
-                  title="Copy link at timestamp"
-                >
-                  <Copy className="h-4 w-4" />
+                  <RotateCw className="h-3 w-3" />
                 </Button>
               </div>
-            </div>
+            )}
             <div className="aspect-video w-full rounded-md overflow-hidden">
-              <iframe
-                id={`vod-${result.detection_id}`}
-                src={`https://player.twitch.tv/?video=${
-                  result.vod_source_id
-                }&parent=${
-                  typeof window !== "undefined"
-                    ? window.location.hostname
-                    : "localhost"
-                }&time=${result.frame_time_seconds}s&autoplay=true`}
-                height="100%"
-                width="100%"
-                allowFullScreen
-                className="w-full h-full"
-              />
+              {/* Twitch Embed container */}
+              <div id={containerId} className="w-full h-full" />
+              {error && (
+                <div className="p-4 text-red-500">
+                  Error loading player: {error}
+                </div>
+              )}
             </div>
           </div>
         )}

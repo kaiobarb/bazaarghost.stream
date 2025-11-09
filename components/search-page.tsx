@@ -337,7 +337,7 @@ export default function SearchPage({
       // Set new timer for debounced search
       const timer = setTimeout(() => {
         performSearch(searchQuery);
-      }, 300);
+      }, 500);
 
       setSearchTimer(timer);
 
@@ -578,6 +578,7 @@ export default function SearchPage({
                     result={result}
                     expandedId={expandedId}
                     onToggleExpand={toggleExpand}
+                    isFirstResult={false} // No preloading on landing page
                   />
                 ))}
               </div>
@@ -589,14 +590,28 @@ export default function SearchPage({
       {/* Search Results */}
       {!isLoading && hasSearched && results.length > 0 && (
         <div className="space-y-2">
-          {results.map((result) => (
-            <DetectionCard
-              key={result.detection_id}
-              result={result}
-              expandedId={expandedId}
-              onToggleExpand={toggleExpand}
-            />
-          ))}
+          {results.map((result, index) => {
+            // Preload all consecutive results with same username as first result
+            const firstUsername = results[0]?.username;
+            let shouldPreload = false;
+
+            if (firstUsername) {
+              // Check if this result and all before it have the same username
+              shouldPreload = results
+                .slice(0, index + 1)
+                .every(r => r.username === firstUsername);
+            }
+
+            return (
+              <DetectionCard
+                key={result.detection_id}
+                result={result}
+                expandedId={expandedId}
+                onToggleExpand={toggleExpand}
+                isFirstResult={shouldPreload}
+              />
+            );
+          })}
         </div>
       )}
 
