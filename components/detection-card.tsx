@@ -1,6 +1,5 @@
 "use client";
 
-import type React from "react";
 import Image from "next/image";
 import { Copy } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -58,9 +57,7 @@ export function DetectionCard({
                 className="inline-block"
               />
             )}
-            <span className="font-medium font-inter">
-              {result.username}
-            </span>
+            <span className="font-medium font-inter">{result.username}</span>
           </div>
 
           {/* Mobile-responsive metadata */}

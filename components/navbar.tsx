@@ -38,10 +38,9 @@ export default function Navbar() {
           >
             <Image
               src="/logo.svg"
-              priority
               alt="Logo"
               width={40}
-              height={40}
+              height={25}
               className="object-contain"
             />
             <h1 className="text-xl font-bold text-primary">

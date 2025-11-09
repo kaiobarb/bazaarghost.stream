@@ -54,6 +54,7 @@ const averiaLibre = localFont({
     },
   ],
   variable: "--font-averia-libre",
+  preload: false,
 });
 
 export const metadata: Metadata = {

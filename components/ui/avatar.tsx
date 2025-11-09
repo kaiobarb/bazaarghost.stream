@@ -28,8 +28,8 @@ function AvatarImage({
 }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
   const { src, alt, width, height, ...rest } = props;
 
-  if (!src) {
-    // Fallback to the original behavior if no src
+  // Fallback to original behavior if no src or src is not a string
+  if (!src || typeof src !== "string") {
     return (
       <AvatarPrimitive.Image
         data-slot="avatar-image"
@@ -48,7 +48,6 @@ function AvatarImage({
   const { props: nextOptimizedProps } = getImageProps({
     src,
     alt: alt || "",
-    quality: 90,
     ...size,
     ...rest,
   });

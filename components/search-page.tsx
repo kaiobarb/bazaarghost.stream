@@ -23,7 +23,6 @@ import {
 import { supabase } from "@/lib/supabase-client";
 import type { Database, Tables } from "@/types/supabase";
 import { DetectionCard } from "@/components/detection-card";
-import { DetectionCardSkeletonList } from "@/components/detection-card-skeleton";
 
 type Streamer = Tables<"streamers">;
 
