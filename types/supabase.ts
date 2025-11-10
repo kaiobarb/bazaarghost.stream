@@ -622,6 +622,33 @@ export type Database = {
           vod_url: string
         }[]
       }
+      fuzzy_search_detections_test: {
+        Args: {
+          date_range_filter?: string
+          result_limit?: number
+          result_offset?: number
+          search_query?: string
+          similarity_threshold?: number
+          streamer_id_filter?: number
+        }
+        Returns: {
+          actual_timestamp: string
+          confidence: number
+          detection_id: string
+          frame_time_seconds: number
+          rank: string
+          similarity_score: number
+          streamer_avatar: string
+          streamer_display_name: string
+          streamer_id: number
+          streamer_login: string
+          total_count: number
+          username: string
+          vod_id: number
+          vod_source_id: string
+          vod_url: string
+        }[]
+      }
       get_global_stats: { Args: never; Returns: Json }
       get_pending_chunks_for_vod: {
         Args: { p_source_id?: string; p_vod_id?: number }

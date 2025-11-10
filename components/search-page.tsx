@@ -23,9 +23,11 @@ import {
 import { supabase } from "@/lib/supabase-client";
 import type { Database, Tables } from "@/types/supabase";
 import { DetectionCard } from "@/components/detection-card";
+import { PaginationControls } from "@/components/pagination-controls";
 
 type Streamer = Tables<"streamers">;
-type StreamerWithDetectionStats = Database["public"]["Views"]["streamers_with_detections"]["Row"];
+type StreamerWithDetectionStats =
+  Database["public"]["Views"]["streamers_with_detections"]["Row"];
 
 // Use actual database function return types instead of ad-hoc interfaces
 type SearchResult =
@@ -77,6 +79,11 @@ export default function SearchPage({
   );
   const [hasSearched, setHasSearched] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Pagination state (only for search results)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
+  const pageSize = 25;
   const [isUpdatingFromURL, setIsUpdatingFromURL] = useState(false);
 
   // Function to update URL with current filters
@@ -125,7 +132,9 @@ export default function SearchPage({
 
     // Update streamer selection
     if (streamerId) {
-      const streamerData = streamers.find((s) => s.streamer_id?.toString() === streamerId);
+      const streamerData = streamers.find(
+        (s) => s.streamer_id?.toString() === streamerId
+      );
       if (streamerData) {
         // Convert view data to Streamer type
         const streamerObj: Streamer = {
@@ -269,33 +278,86 @@ export default function SearchPage({
     }
   };
 
-  const performSearch = async (query: string) => {
+  // Store current search parameters for pagination
+  const [currentSearchQuery, setCurrentSearchQuery] = useState("");
+
+  const performSearch = async (query: string, page: number = 1) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Use the fuzzy search RPC function
-      const { data, error } = await supabase.rpc("fuzzy_search_detections", {
-        search_query: query.trim() || undefined,
-        streamer_id_filter: selectedStreamer?.id || undefined,
-        date_range_filter: "all",
-        similarity_threshold: 0.25, // Only return results with > 45% similarity
-        result_limit: 20,
-      });
+      // Store search query for pagination
+      setCurrentSearchQuery(query);
+
+      // Calculate offset for pagination
+      const offset = (page - 1) * pageSize;
+
+      // Fetch paginated results
+      // Note: If your backend doesn't support result_offset yet,
+      // you'll need to update the fuzzy_search_detections function first
+      const { data, error } = await supabase.rpc(
+        "fuzzy_search_detections_test",
+        {
+          search_query: query.trim() || undefined,
+          streamer_id_filter: selectedStreamer?.id || undefined,
+          date_range_filter: "all",
+          similarity_threshold: 0.25,
+          result_limit: pageSize,
+          result_offset: offset,
+        }
+      );
 
       if (error) throw error;
 
       if (data && Array.isArray(data)) {
-        // Data already matches SearchResult type - no mapping needed
-        setResults(data);
+        if (data.length > 0) {
+          // Check if we have total_count from the backend (window function approach)
+          // @ts-ignore - total_count might not be in types yet
+          const totalCount = data[0].total_count;
+
+          if (totalCount !== undefined && totalCount !== null) {
+            // We have the exact count from backend
+            setTotalResults(Number(totalCount));
+          } else {
+            // Fallback: estimate based on results received
+            if (data.length < pageSize) {
+              setTotalResults(offset + data.length);
+            } else {
+              setTotalResults(
+                Math.max((page + 1) * pageSize, offset + data.length)
+              );
+            }
+          }
+
+          setResults(data);
+          setCurrentPage(page);
+        } else {
+          // No results
+          setResults([]);
+          setTotalResults(0);
+          setCurrentPage(1);
+        }
       } else {
         setResults([]);
+        setTotalResults(0);
+        setCurrentPage(1);
       }
     } catch (err) {
       console.error("Error searching:", err);
       setError("Search failed. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Function to change page
+  const changePage = async (newPage: number) => {
+    const totalPages = Math.ceil(totalResults / pageSize);
+    if (newPage >= 1 && newPage <= totalPages) {
+      // Perform search with new page number
+      await performSearch(currentSearchQuery, newPage);
+      // Scroll to top of results
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -315,7 +377,7 @@ export default function SearchPage({
 
       // Set new timer for debounced search
       const timer = setTimeout(() => {
-        performSearch(searchQuery);
+        performSearch(searchQuery, 1); // Always start from page 1 for new searches
       }, 500);
 
       setSearchTimer(timer);
@@ -443,7 +505,9 @@ export default function SearchPage({
                           };
                           setSelectedStreamer(streamerObj);
                           setOpenStreamerPopover(false);
-                          updateURL({ streamerId: streamer.streamer_id?.toString() || "" });
+                          updateURL({
+                            streamerId: streamer.streamer_id?.toString() || "",
+                          });
                         }}
                         className="cursor-pointer"
                       >
@@ -456,13 +520,12 @@ export default function SearchPage({
                         />
                         <Avatar className="h-8 w-8 mr-2">
                           <AvatarImage
-                            src={
-                              streamer.streamer_avatar || "/placeholder.svg"
-                            }
+                            src={streamer.streamer_avatar || "/placeholder.svg"}
                             alt={streamer.streamer_display_name || ""}
                           />
                           <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                            {streamer.streamer_display_name?.[0]?.toUpperCase() || "S"}
+                            {streamer.streamer_display_name?.[0]?.toUpperCase() ||
+                              "S"}
                           </AvatarFallback>
                         </Avatar>
                         <span>{streamer.streamer_display_name}</span>
@@ -582,30 +645,52 @@ export default function SearchPage({
 
       {/* Search Results */}
       {!isLoading && hasSearched && results.length > 0 && (
-        <div className="space-y-2">
-          {results.map((result, index) => {
-            // Preload all consecutive results with same username as first result
-            const firstUsername = results[0]?.username;
-            let shouldPreload = false;
+        <>
+          {/* Pagination Controls */}
+          <PaginationControls
+            currentPage={currentPage}
+            totalResults={totalResults}
+            pageSize={pageSize}
+            onPageChange={changePage}
+            isLoading={isLoading}
+          />
 
-            if (firstUsername) {
-              // Check if this result and all before it have the same username
-              shouldPreload = results
-                .slice(0, index + 1)
-                .every((r) => r.username === firstUsername);
-            }
+          <div className="space-y-2">
+            {results.map((result, index) => {
+              // Preload all consecutive results with same username as first result
+              const firstUsername = results[0]?.username;
+              let shouldPreload = false;
 
-            return (
-              <DetectionCard
-                key={result.detection_id}
-                result={result}
-                expandedId={expandedId}
-                onToggleExpand={toggleExpand}
-                isFirstResult={shouldPreload}
-              />
-            );
-          })}
-        </div>
+              if (firstUsername) {
+                // Check if this result and all before it have the same username
+                shouldPreload = results
+                  .slice(0, index + 1)
+                  .every((r) => r.username === firstUsername);
+              }
+
+              return (
+                <DetectionCard
+                  key={result.detection_id}
+                  result={result}
+                  expandedId={expandedId}
+                  onToggleExpand={toggleExpand}
+                  isFirstResult={shouldPreload}
+                />
+              );
+            })}
+          </div>
+
+          {/* Bottom Pagination Controls - only show if more than 1 page */}
+          {Math.ceil(totalResults / pageSize) > 1 && (
+            <PaginationControls
+              currentPage={currentPage}
+              totalResults={totalResults}
+              pageSize={pageSize}
+              onPageChange={changePage}
+              isLoading={isLoading}
+            />
+          )}
+        </>
       )}
 
       {/* Empty State */}
