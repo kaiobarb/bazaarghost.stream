@@ -25,6 +25,7 @@ import type { Database, Tables } from "@/types/supabase";
 import { DetectionCard } from "@/components/detection-card";
 
 type Streamer = Tables<"streamers">;
+type StreamerWithDetectionStats = Database["public"]["Views"]["streamers_with_detections"]["Row"];
 
 // Use actual database function return types instead of ad-hoc interfaces
 type SearchResult =
@@ -67,7 +68,7 @@ export default function SearchPage({
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [streamers, setStreamers] = useState<Streamer[]>([]);
+  const [streamers, setStreamers] = useState<StreamerWithDetectionStats[]>([]);
   const [searchTimer, setSearchTimer] = useState<NodeJS.Timeout | null>(null);
   const [openStreamerPopover, setOpenStreamerPopover] = useState(false);
   const [stats, setStats] = useState(initialStats);
@@ -124,9 +125,23 @@ export default function SearchPage({
 
     // Update streamer selection
     if (streamerId) {
-      const streamer = streamers.find((s) => s.id.toString() === streamerId);
-      if (streamer) {
-        setSelectedStreamer(streamer);
+      const streamerData = streamers.find((s) => s.streamer_id?.toString() === streamerId);
+      if (streamerData) {
+        // Convert view data to Streamer type
+        const streamerObj: Streamer = {
+          id: streamerData.streamer_id!,
+          login: streamerData.streamer_login!,
+          display_name: streamerData.streamer_display_name,
+          profile_image_url: streamerData.streamer_avatar,
+          processing_enabled: streamerData.processing_enabled,
+          created_at: null,
+          updated_at: null,
+          has_vods: null,
+          num_vods: null,
+          num_bazaar_vods: null,
+          oldest_vod: null,
+        };
+        setSelectedStreamer(streamerObj);
       } else {
         setSelectedStreamer(null);
       }
@@ -158,53 +173,17 @@ export default function SearchPage({
 
   const fetchStreamers = async () => {
     try {
-      // Get streamers from detection_search view to ensure we only show streamers with valid detections
-      // Limit the query for performance and use recent detections
       const { data, error } = await supabase
-        .from("detection_search")
-        .select(
-          "streamer_id, streamer_login, streamer_display_name, streamer_avatar"
-        )
-        .not("streamer_id", "is", null)
-        .order("actual_timestamp", { ascending: false })
-        .limit(300);
+        .from("streamers_with_detections")
+        .select("*")
+        .order("streamer_display_name", { ascending: true });
 
-      if (error) throw error;
-
-      if (data) {
-        // Create a map to get unique streamers
-        const uniqueStreamersMap = new Map<number, Streamer>();
-
-        data.forEach((item: any) => {
-          if (item.streamer_id && !uniqueStreamersMap.has(item.streamer_id)) {
-            // Create a Streamer object that matches the expected type
-            uniqueStreamersMap.set(item.streamer_id, {
-              id: item.streamer_id,
-              login: item.streamer_login || "", // Provide empty string if null
-              display_name: item.streamer_display_name,
-              profile_image_url: item.streamer_avatar,
-              processing_enabled: true,
-              created_at: null,
-              updated_at: null,
-              has_vods: null,
-              num_vods: null,
-              num_bazaar_vods: null,
-              oldest_vod: null,
-            });
-          }
-        });
-
-        // Convert map to array and sort by display_name
-        const uniqueStreamers = Array.from(uniqueStreamersMap.values()).sort(
-          (a, b) => {
-            const nameA = a.display_name || a.login;
-            const nameB = b.display_name || b.login;
-            return nameA.localeCompare(nameB);
-          }
-        );
-
-        setStreamers(uniqueStreamers);
+      if (error) {
+        console.error("Error fetching streamers:", error);
+        return;
       }
+
+      setStreamers(data || []);
     } catch (err) {
       console.error("Error fetching streamers:", err);
     }
@@ -445,18 +424,32 @@ export default function SearchPage({
                     </CommandItem>
                     {streamers.map((streamer) => (
                       <CommandItem
-                        key={streamer.id}
-                        value={streamer.display_name || ""}
+                        key={streamer.streamer_id}
+                        value={streamer.streamer_display_name || ""}
                         onSelect={() => {
-                          setSelectedStreamer(streamer);
+                          // Convert view data to Streamer type
+                          const streamerObj: Streamer = {
+                            id: streamer.streamer_id!,
+                            login: streamer.streamer_login!,
+                            display_name: streamer.streamer_display_name,
+                            profile_image_url: streamer.streamer_avatar,
+                            processing_enabled: streamer.processing_enabled,
+                            created_at: null,
+                            updated_at: null,
+                            has_vods: null,
+                            num_vods: null,
+                            num_bazaar_vods: null,
+                            oldest_vod: null,
+                          };
+                          setSelectedStreamer(streamerObj);
                           setOpenStreamerPopover(false);
-                          updateURL({ streamerId: streamer.id.toString() });
+                          updateURL({ streamerId: streamer.streamer_id?.toString() || "" });
                         }}
                         className="cursor-pointer"
                       >
                         <Check
                           className={`mr-2 h-4 w-4 ${
-                            selectedStreamer?.id === streamer.id
+                            selectedStreamer?.id === streamer.streamer_id
                               ? "opacity-100"
                               : "opacity-0"
                           }`}
@@ -464,15 +457,15 @@ export default function SearchPage({
                         <Avatar className="h-8 w-8 mr-2">
                           <AvatarImage
                             src={
-                              streamer.profile_image_url || "/placeholder.svg"
+                              streamer.streamer_avatar || "/placeholder.svg"
                             }
-                            alt={streamer.display_name || ""}
+                            alt={streamer.streamer_display_name || ""}
                           />
                           <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                            {streamer.display_name?.[0]?.toUpperCase() || "S"}
+                            {streamer.streamer_display_name?.[0]?.toUpperCase() || "S"}
                           </AvatarFallback>
                         </Avatar>
-                        <span>{streamer.display_name}</span>
+                        <span>{streamer.streamer_display_name}</span>
                       </CommandItem>
                     ))}
                   </CommandGroup>
@@ -599,7 +592,7 @@ export default function SearchPage({
               // Check if this result and all before it have the same username
               shouldPreload = results
                 .slice(0, index + 1)
-                .every(r => r.username === firstUsername);
+                .every((r) => r.username === firstUsername);
             }
 
             return (

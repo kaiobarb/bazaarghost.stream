@@ -138,6 +138,13 @@ export type Database = {
             foreignKeyName: "chunks_vod_id_fkey"
             columns: ["vod_id"]
             isOneToOne: false
+            referencedRelation: "detection_search_debug"
+            referencedColumns: ["vod_id"]
+          },
+          {
+            foreignKeyName: "chunks_vod_id_fkey"
+            columns: ["vod_id"]
+            isOneToOne: false
             referencedRelation: "vod_stats"
             referencedColumns: ["id"]
           },
@@ -200,6 +207,13 @@ export type Database = {
             columns: ["vod_id"]
             isOneToOne: false
             referencedRelation: "detection_search"
+            referencedColumns: ["vod_id"]
+          },
+          {
+            foreignKeyName: "detections_vod_id_fkey"
+            columns: ["vod_id"]
+            isOneToOne: false
+            referencedRelation: "detection_search_debug"
             referencedColumns: ["vod_id"]
           },
           {
@@ -396,6 +410,13 @@ export type Database = {
             foreignKeyName: "vods_streamer_id_fkey"
             columns: ["streamer_id"]
             isOneToOne: false
+            referencedRelation: "detection_search_debug"
+            referencedColumns: ["streamer_id"]
+          },
+          {
+            foreignKeyName: "vods_streamer_id_fkey"
+            columns: ["streamer_id"]
+            isOneToOne: false
             referencedRelation: "streamer_detection_stats"
             referencedColumns: ["streamer_id"]
           },
@@ -405,6 +426,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "streamers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vods_streamer_id_fkey"
+            columns: ["streamer_id"]
+            isOneToOne: false
+            referencedRelation: "streamers_with_detections"
+            referencedColumns: ["streamer_id"]
           },
         ]
       }
@@ -437,97 +465,32 @@ export type Database = {
         }
         Relationships: []
       }
-      detections_with_streamer_vod: {
+      detection_search_debug: {
         Row: {
-          chunk_id: string | null
+          actual_timestamp: string | null
           confidence: number | null
-          created_at: string | null
+          detection_created_at: string | null
+          detection_id: string | null
           frame_time_seconds: number | null
           no_right_edge: boolean | null
           rank: string | null
           storage_path: string | null
-          streamer_login: string | null
-          username: string | null
-          vod_source_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "detections_chunk_id_fkey"
-            columns: ["chunk_id"]
-            isOneToOne: false
-            referencedRelation: "chunks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      detections_with_streamer_vods: {
-        Row: {
-          chunk_id: string | null
-          confidence: number | null
-          created_at: string | null
-          frame_time_seconds: number | null
-          id: string | null
-          no_right_edge: boolean | null
-          published_at: string | null
-          rank: string | null
-          storage_path: string | null
+          streamer_avatar: string | null
+          streamer_display_name: string | null
           streamer_id: number | null
           streamer_login: string | null
           username: string | null
+          vod_availability:
+            | Database["public"]["Enums"]["vod_availability"]
+            | null
+          vod_duration_seconds: number | null
           vod_id: number | null
+          vod_published_at: string | null
+          vod_source_id: string | null
           vod_title: string | null
+          vod_url: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "detections_chunk_id_fkey"
-            columns: ["chunk_id"]
-            isOneToOne: false
-            referencedRelation: "chunks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "detections_vod_id_fkey"
-            columns: ["vod_id"]
-            isOneToOne: false
-            referencedRelation: "detection_search"
-            referencedColumns: ["vod_id"]
-          },
-          {
-            foreignKeyName: "detections_vod_id_fkey"
-            columns: ["vod_id"]
-            isOneToOne: false
-            referencedRelation: "vod_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "detections_vod_id_fkey"
-            columns: ["vod_id"]
-            isOneToOne: false
-            referencedRelation: "vods"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vods_streamer_id_fkey"
-            columns: ["streamer_id"]
-            isOneToOne: false
-            referencedRelation: "detection_search"
-            referencedColumns: ["streamer_id"]
-          },
-          {
-            foreignKeyName: "vods_streamer_id_fkey"
-            columns: ["streamer_id"]
-            isOneToOne: false
-            referencedRelation: "streamer_detection_stats"
-            referencedColumns: ["streamer_id"]
-          },
-          {
-            foreignKeyName: "vods_streamer_id_fkey"
-            columns: ["streamer_id"]
-            isOneToOne: false
-            referencedRelation: "streamers"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       streamer_detection_stats: {
         Row: {
@@ -547,55 +510,16 @@ export type Database = {
         }
         Relationships: []
       }
-      streamer_detections: {
+      streamers_with_detections: {
         Row: {
-          "2sixten": string | null
-          askaandthewolf: string | null
-          assertivestreaming: string | null
-          battleliquor: string | null
-          behemyth23: string | null
-          bryukvaplay: string | null
-          chronosoutoftime: string | null
-          ckatv: string | null
-          classyato: string | null
-          dice_the_vice: string | null
-          dorsel: string | null
-          doughboy808hi: string | null
-          drevsaurus: string | null
-          ericmcgann: string | null
-          esaygraphics: string | null
-          fr3akuency: string | null
-          gnashin: string | null
-          goranthaman: string | null
-          heymaddle: string | null
-          hopeless_bb: string | null
-          hunting_mage: string | null
-          jota3n: string | null
-          keletakis: string | null
-          kratzeflow: string | null
-          kwev: string | null
-          layzyn: string | null
-          leodriango: string | null
-          merimides: string | null
-          mikevalentine: string | null
-          mobooshka_ua: string | null
-          mr_demonolog: string | null
-          nl_kripp: string | null
-          nomastersnorulers: string | null
-          offs2010: string | null
-          profumatotk: string | null
-          rahresh: string | null
-          rn: number | null
-          sg4e: string | null
-          simplylohiow: string | null
-          the_joker_92: string | null
-          theobr0mine: string | null
-          tr1kster: string | null
-          true_adant: string | null
-          trynet123: string | null
-          volf81: string | null
-          whisperzz_live: string | null
-          zenaton: string | null
+          detection_count: number | null
+          latest_detection_timestamp: string | null
+          processing_enabled: boolean | null
+          streamer_avatar: string | null
+          streamer_display_name: string | null
+          streamer_id: number | null
+          streamer_login: string | null
+          vod_count: number | null
         }
         Relationships: []
       }
@@ -629,9 +553,51 @@ export type Database = {
         Args: { p_min_chunk_duration?: number; p_vod_id: number }
         Returns: number
       }
+      create_missing_chunks_for_vod: {
+        Args: {
+          p_min_gap_seconds?: number
+          p_target_chunk_seconds?: number
+          p_vod_id: number
+        }
+        Returns: number
+      }
       cron_insert_new_streamers: { Args: never; Returns: undefined }
       cron_update_streamer_vods: { Args: never; Returns: undefined }
+      force_process_vod: {
+        Args: {
+          p_min_gap_seconds?: number
+          p_source_id?: string
+          p_target_chunk_seconds?: number
+          p_vod_id?: number
+        }
+        Returns: Json
+      }
       fuzzy_search_detections: {
+        Args: {
+          date_range_filter?: string
+          result_limit?: number
+          search_query?: string
+          similarity_threshold?: number
+          streamer_id_filter?: number
+        }
+        Returns: {
+          actual_timestamp: string
+          confidence: number
+          detection_id: string
+          frame_time_seconds: number
+          rank: string
+          similarity_score: number
+          streamer_avatar: string
+          streamer_display_name: string
+          streamer_id: number
+          streamer_login: string
+          username: string
+          vod_id: number
+          vod_source_id: string
+          vod_url: string
+        }[]
+      }
+      fuzzy_search_detections_debug: {
         Args: {
           date_range_filter?: string
           result_limit?: number
@@ -708,32 +674,24 @@ export type Database = {
           vod_id: number
         }[]
       }
-      search_detections_fuzzy: {
-        Args: {
-          p_date_from?: string
-          p_date_to?: string
-          p_streamer_id?: number
-          search_query: string
-        }
-        Returns: {
-          actual_timestamp: string
-          confidence: number
-          detection_id: string
-          frame_time_seconds: number
-          rank: string
-          rank_score: number
-          streamer_avatar: string
-          streamer_display_name: string
-          streamer_id: number
-          streamer_login: string
-          username: string
-          vod_id: number
-          vod_source_id: string
-          vod_url: string
-        }[]
-      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      simulate_chunk_plan_for_vod: {
+        Args: {
+          p_min_gap_seconds?: number
+          p_target_chunk_seconds?: number
+          p_vod_id: number
+        }
+        Returns: {
+          gap_end: number
+          gap_start: number
+          proposed_chunk_end: number
+          proposed_chunk_start: number
+          proposed_duration: number
+          segment_end: number
+          segment_start: number
+        }[]
+      }
       update_chunk_status: {
         Args: { p_chunk_id: string; p_error_message?: string; p_status: string }
         Returns: Json
