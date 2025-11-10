@@ -39,16 +39,19 @@ function AvatarImage({
     );
   }
 
-  const size =
-    width && height
-      ? { width: Number(width), height: Number(height) }
-      : { fill: true };
+  // Use fixed size for avatars to reduce transformations
+  // Default to 40px which is the common avatar size (size-10 = 2.5rem = 40px)
+  // For size-12, that's 3rem = 48px
+  const avatarSize = width && height ? Number(width) : 48; // Default to 48px for size-12 avatars
 
   // Use Next.js image optimization
   const { props: nextOptimizedProps } = getImageProps({
     src,
     alt: alt || "",
-    ...size,
+    width: avatarSize,
+    height: avatarSize,
+    sizes: `${avatarSize}px`,
+    quality: 75,
     ...rest,
   });
 
