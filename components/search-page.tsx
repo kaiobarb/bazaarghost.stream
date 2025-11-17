@@ -149,6 +149,7 @@ export default function SearchPage({
           num_vods: null,
           num_bazaar_vods: null,
           oldest_vod: null,
+          sfot_profile_id: null,
         };
         setSelectedStreamer(streamerObj);
       } else {
@@ -502,6 +503,7 @@ export default function SearchPage({
                             num_vods: null,
                             num_bazaar_vods: null,
                             oldest_vod: null,
+                            sfot_profile_id: null,
                           };
                           setSelectedStreamer(streamerObj);
                           setOpenStreamerPopover(false);
@@ -597,6 +599,7 @@ export default function SearchPage({
                       num_vods: null,
                       num_bazaar_vods: null,
                       oldest_vod: null,
+                      sfot_profile_id: null,
                     };
                     setSelectedStreamer(streamerObj);
                     setOpenStreamerPopover(false);
