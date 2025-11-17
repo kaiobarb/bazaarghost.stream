@@ -258,48 +258,39 @@ export type Database = {
       }
       sfot_profiles: {
         Row: {
-          confidence_threshold: number | null
-          container_image: string
-          container_tag: string
-          cpu_millicores: number | null
           created_at: string | null
-          enable_debug_output: boolean | null
-          enable_gpu: boolean | null
-          frame_interval_seconds: number | null
-          memory_mb: number | null
-          metadata: Json | null
+          crop_region: number[]
+          custom_edge: number | null
+          from_date: string | null
+          id: number
+          opaque_edge: boolean | null
           profile_name: string
-          timeout_seconds: number | null
+          scale: number | null
+          to_date: string | null
           updated_at: string | null
         }
         Insert: {
-          confidence_threshold?: number | null
-          container_image: string
-          container_tag: string
-          cpu_millicores?: number | null
           created_at?: string | null
-          enable_debug_output?: boolean | null
-          enable_gpu?: boolean | null
-          frame_interval_seconds?: number | null
-          memory_mb?: number | null
-          metadata?: Json | null
+          crop_region: number[]
+          custom_edge?: number | null
+          from_date?: string | null
+          id?: never
+          opaque_edge?: boolean | null
           profile_name: string
-          timeout_seconds?: number | null
+          scale?: number | null
+          to_date?: string | null
           updated_at?: string | null
         }
         Update: {
-          confidence_threshold?: number | null
-          container_image?: string
-          container_tag?: string
-          cpu_millicores?: number | null
           created_at?: string | null
-          enable_debug_output?: boolean | null
-          enable_gpu?: boolean | null
-          frame_interval_seconds?: number | null
-          memory_mb?: number | null
-          metadata?: Json | null
+          crop_region?: number[]
+          custom_edge?: number | null
+          from_date?: string | null
+          id?: never
+          opaque_edge?: boolean | null
           profile_name?: string
-          timeout_seconds?: number | null
+          scale?: number | null
+          to_date?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -316,6 +307,7 @@ export type Database = {
           oldest_vod: string | null
           processing_enabled: boolean | null
           profile_image_url: string | null
+          sfot_profile_id: number | null
           updated_at: string | null
         }
         Insert: {
@@ -329,6 +321,7 @@ export type Database = {
           oldest_vod?: string | null
           processing_enabled?: boolean | null
           profile_image_url?: string | null
+          sfot_profile_id?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -342,9 +335,18 @@ export type Database = {
           oldest_vod?: string | null
           processing_enabled?: boolean | null
           profile_image_url?: string | null
+          sfot_profile_id?: number | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "streamers_sfot_profile_id_fkey"
+            columns: ["sfot_profile_id"]
+            isOneToOne: false
+            referencedRelation: "sfot_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vods: {
         Row: {
@@ -541,6 +543,7 @@ export type Database = {
           status: Database["public"]["Enums"]["vod_status"] | null
           streamer: string | null
           title: string | null
+          total_detections: number | null
           unavailable_since: string | null
           updated_at: string | null
         }
