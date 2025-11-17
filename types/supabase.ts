@@ -167,6 +167,7 @@ export type Database = {
           no_right_edge: boolean | null
           rank: string | null
           storage_path: string | null
+          truncated: boolean | null
           username: string
           vod_id: number | null
         }
@@ -179,6 +180,7 @@ export type Database = {
           no_right_edge?: boolean | null
           rank?: string | null
           storage_path?: string | null
+          truncated?: boolean | null
           username: string
           vod_id?: number | null
         }
@@ -191,6 +193,7 @@ export type Database = {
           no_right_edge?: boolean | null
           rank?: string | null
           storage_path?: string | null
+          truncated?: boolean | null
           username?: string
           vod_id?: number | null
         }
