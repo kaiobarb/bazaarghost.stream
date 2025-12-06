@@ -235,6 +235,36 @@ export type Database = {
           },
         ]
       }
+      notification_subscriptions: {
+        Row: {
+          created_at: string | null
+          discord_user_id: string
+          enabled: boolean
+          guild_id: string | null
+          notify_type: string
+          username: string
+          username_lower: string
+        }
+        Insert: {
+          created_at?: string | null
+          discord_user_id: string
+          enabled?: boolean
+          guild_id?: string | null
+          notify_type?: string
+          username: string
+          username_lower?: string
+        }
+        Update: {
+          created_at?: string | null
+          discord_user_id?: string
+          enabled?: boolean
+          guild_id?: string | null
+          notify_type?: string
+          username?: string
+          username_lower?: string
+        }
+        Relationships: []
+      }
       processing_config: {
         Row: {
           created_at: string | null
@@ -256,6 +286,24 @@ export type Database = {
           key?: string
           updated_at?: string | null
           value?: string
+        }
+        Relationships: []
+      }
+      server_channels: {
+        Row: {
+          channel_id: string
+          created_at: string | null
+          guild_id: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string | null
+          guild_id: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string | null
+          guild_id?: string
         }
         Relationships: []
       }

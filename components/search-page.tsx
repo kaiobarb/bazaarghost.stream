@@ -297,7 +297,7 @@ export default function SearchPage({
       // Note: If your backend doesn't support result_offset yet,
       // you'll need to update the fuzzy_search_detections function first
       const { data, error } = await supabase.rpc(
-        "fuzzy_search_detections_test",
+        "fuzzy_search_detections",
         {
           search_query: query.trim() || undefined,
           streamer_id_filter: selectedStreamer?.id || undefined,

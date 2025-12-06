@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Copy, RotateCw } from "lucide-react";
+import { AlertTriangle, Copy, RotateCw } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useTwitchPlayer } from "@/hooks/useTwitchPlayer";
@@ -70,7 +75,14 @@ export function DetectionCard({
     if (!isExpanded) {
       pause();
     }
-  }, [isReady, isFirstResult, isExpanded, result.frame_time_seconds, seek, pause]);
+  }, [
+    isReady,
+    isFirstResult,
+    isExpanded,
+    result.frame_time_seconds,
+    seek,
+    pause,
+  ]);
 
   return (
     <div
@@ -108,6 +120,17 @@ export function DetectionCard({
               />
             )}
             <span className="font-medium font-inter">{result.username}</span>
+            {"truncated" in result &&
+              (result as { truncated?: boolean }).truncated && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="ml-1 align-middle">
+                      <AlertTriangle className="h-4 w-4 text-yellow-500 inline-block" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Username may be truncated</TooltipContent>
+                </Tooltip>
+              )}
           </div>
 
           {/* Mobile-responsive metadata */}
@@ -184,7 +207,7 @@ export function DetectionCard({
                   size="sm"
                   onClick={() => {
                     // Increment refresh key to force hook re-initialization
-                    setRefreshKey(prev => prev + 1);
+                    setRefreshKey((prev) => prev + 1);
                   }}
                   className="text-muted-foreground hover:text-foreground p-2 mr-4 md:mr-0"
                   title="Refresh player"
