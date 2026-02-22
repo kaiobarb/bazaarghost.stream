@@ -64,10 +64,13 @@ export function StreamerVodList({ vods }: StreamerVodListProps) {
     const filterFn = filters.find((f) => f.value === activeFilter)!.test;
     let result = vods.filter(filterFn);
 
-    // Title search
+    // Title or VOD ID search
     const q = query.trim().toLowerCase();
     if (q) {
-      result = result.filter((v) => (v.title ?? "").toLowerCase().includes(q));
+      result = result.filter(
+        (v) =>
+          (v.title ?? "").toLowerCase().includes(q) || v.twitchId.includes(q)
+      );
     }
 
     // Date filter
@@ -92,7 +95,7 @@ export function StreamerVodList({ vods }: StreamerVodListProps) {
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Filter by title..."
+            placeholder="Filter by title or VOD ID..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="pl-8"
@@ -110,7 +113,7 @@ export function StreamerVodList({ vods }: StreamerVodListProps) {
               <CalendarIcon className="size-3.5" />
               {selectedDate
                 ? format(selectedDate, "MMM d, yyyy")
-                : "Pick a date"}
+                : "Filter By Date"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="end">
