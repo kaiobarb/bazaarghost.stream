@@ -45,6 +45,48 @@ export async function getGlobalStats() {
   }
 }
 
+export async function getStreamerByLogin(login: string) {
+  "use server";
+  try {
+    const { data, error } = await supabaseServer
+      .from("streamers")
+      .select("*")
+      .eq("login", login)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching streamer by login:", error);
+      return null;
+    }
+
+    return data;
+  } catch (err) {
+    console.error("Error fetching streamer by login:", err);
+    return null;
+  }
+}
+
+export async function getStreamerVods(streamerLogin: string) {
+  "use server";
+  try {
+    const { data, error } = await supabaseServer
+      .from("vod_stats")
+      .select("*")
+      .eq("streamer", streamerLogin)
+      .order("published_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching streamer vods:", error);
+      return [];
+    }
+
+    return data ?? [];
+  } catch (err) {
+    console.error("Error fetching streamer vods:", err);
+    return [];
+  }
+}
+
 export async function getTopStreamers() {
   "use server";
   try {
