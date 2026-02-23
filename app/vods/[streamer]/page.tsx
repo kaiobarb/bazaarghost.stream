@@ -21,22 +21,22 @@ export const revalidate = 36000; // 10 hours
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ streamer: string }>;
 }) {
-  const { id } = await params;
+  const { streamer } = await params;
   return {
-    title: `${id} VODs`,
-    description: `Browse VODs and bazaar matchup data for ${id}`,
+    title: `${streamer} VODs`,
+    description: `Browse VODs and bazaar matchup data for ${streamer}`,
   };
 }
 
 export default async function StreamerPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ streamer: string }>;
 }) {
-  const { id } = await params;
-  const login = id.toLowerCase();
+  const { streamer } = await params;
+  const login = streamer.toLowerCase();
   const { isEnabled: isAdmin } = await draftMode();
 
   // Fetch Twitch user info first (we need the numeric user_id for the VODs call)
