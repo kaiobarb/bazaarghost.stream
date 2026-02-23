@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import {
   getTwitchUser,
   getTwitchVods,
+  getLiveStreamId,
   parseTwitchDuration,
 } from "@/lib/twitch";
 import { getStreamerByLogin, getStreamerVods } from "@/lib/server-utils";
@@ -44,10 +45,11 @@ export default async function StreamerPage({
     notFound();
   }
 
-  // Fetch DB streamer + Twitch VODs in parallel
-  const [dbStreamer, twitchVods] = await Promise.all([
+  // Fetch DB streamer, Twitch VODs, and live status in parallel
+  const [dbStreamer, twitchVods, liveStreamId] = await Promise.all([
     getStreamerByLogin(login),
     getTwitchVods(twitchUser.id),
+    getLiveStreamId(twitchUser.id),
   ]);
 
   // vod_stats.streamer stores display_name, not login — use it for the query
@@ -60,7 +62,7 @@ export default async function StreamerPage({
   const dbStreamerId = dbStreamer?.id ?? null;
 
   // Merge: start from Twitch VODs, enrich with DB data
-  const mergedVods: MergedVod[] = twitchVods.map((tv) => {
+  const mergedVods: MergedVod[] = twitchVods.map((tv, i) => {
     const dbVod = dbVodMap.get(tv.id) ?? null;
     const durationSeconds =
       dbVod?.duration_seconds ?? parseTwitchDuration(tv.duration);
@@ -78,6 +80,7 @@ export default async function StreamerPage({
       bazaarChapters: dbVod?.bazaar_chapters ?? null,
       status: dbVod?.status ?? null,
       streamerId: dbStreamerId,
+      isLive: i === 0 && liveStreamId !== null,
     };
   });
 

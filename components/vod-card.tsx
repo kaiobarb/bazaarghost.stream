@@ -22,6 +22,8 @@ export interface MergedVod {
   status: string | null;
   /** DB streamer ID, used to build search link */
   streamerId: number | null;
+  /** True when the Twitch VOD is from an ongoing live stream */
+  isLive?: boolean;
 }
 
 function formatDuration(seconds: number): string {
@@ -117,23 +119,36 @@ export function VodCard({ vod, isAdmin = false }: VodCardProps) {
         bazaarChapters={vod.bazaarChapters}
       />
 
-      {/* Status badge for DB vods */}
-      {!vod.twitchOnly && vod.status && (
+      {/* Status badge — live overrides all other statuses */}
+      {vod.isLive ? (
         <div className="mt-2 flex items-center gap-1.5">
-          <span
-            className={cn(
-              "inline-block size-1.5 rounded-full",
-              vod.status === "completed" && "bg-green-500",
-              vod.status === "processing" && "bg-yellow-500",
-              vod.status === "pending" && "bg-muted-foreground",
-              vod.status === "failed" && "bg-destructive",
-              vod.status === "partial" && "bg-orange-400"
-            )}
-          />
-          <span className="text-[10px] text-muted-foreground capitalize">
-            {vod.status}
+          <span className="inline-block size-1.5 rounded-full bg-destructive animate-pulse" />
+          <span className="text-[10px] font-semibold text-destructive">
+            LIVE
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            Ghosts will appear after the stream ends
           </span>
         </div>
+      ) : (
+        !vod.twitchOnly &&
+        vod.status && (
+          <div className="mt-2 flex items-center gap-1.5">
+            <span
+              className={cn(
+                "inline-block size-1.5 rounded-full",
+                vod.status === "completed" && "bg-green-500",
+                vod.status === "processing" && "bg-yellow-500",
+                vod.status === "pending" && "bg-muted-foreground",
+                vod.status === "failed" && "bg-destructive",
+                vod.status === "partial" && "bg-orange-400"
+              )}
+            />
+            <span className="text-[10px] text-muted-foreground capitalize">
+              {vod.status}
+            </span>
+          </div>
+        )
       )}
     </div>
   );

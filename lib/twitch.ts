@@ -91,6 +91,22 @@ export async function getTwitchVods(userId: string): Promise<TwitchVod[]> {
 }
 
 /**
+ * Check if a user is currently live and return their stream ID.
+ * Returns null if offline. Uses a short revalidation (60s) since live status is time-sensitive.
+ */
+export async function getLiveStreamId(userId: string): Promise<string | null> {
+  const res = await fetch(
+    `${HELIX_BASE}/streams?user_id=${encodeURIComponent(userId)}`,
+    { headers: helixHeaders(), next: { revalidate: 60 } }
+  );
+
+  if (!res.ok) return null;
+
+  const json: HelixResponse<{ id: string }> = await res.json();
+  return json.data[0]?.id ?? null;
+}
+
+/**
  * Parse a Twitch duration string like "3h21m10s" into total seconds.
  */
 export function parseTwitchDuration(duration: string): number {
