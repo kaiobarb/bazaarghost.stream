@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format, isSameDay } from "date-fns";
 import { Search, CalendarIcon, X, ChevronDown, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { VodCard, type MergedVod } from "@/components/vod-card";
+import { PaginationControls } from "@/components/pagination-controls";
 import { cn } from "@/lib/utils";
+
+const PAGE_SIZE = 20;
 
 interface StreamerVodListProps {
   vods: MergedVod[];
@@ -55,6 +58,7 @@ export function StreamerVodList({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
   const [selectedStatus, setSelectedStatus] = useState<VodStatus | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const counts = useMemo(
     () =>
@@ -91,6 +95,22 @@ export function StreamerVodList({
 
     return result;
   }, [vods, query, selectedDate, activeFilter, selectedStatus]);
+
+  // Reset to page 1 when any filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, selectedDate, activeFilter, selectedStatus]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginatedVods = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <div>
@@ -249,11 +269,27 @@ export function StreamerVodList({
           No VODs match your filter.
         </p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {filtered.map((vod) => (
-            <VodCard key={vod.twitchId} vod={vod} isAdmin={isAdmin} />
-          ))}
-        </div>
+        <>
+          <PaginationControls
+            currentPage={currentPage}
+            totalResults={filtered.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={handlePageChange}
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            {paginatedVods.map((vod) => (
+              <VodCard key={vod.twitchId} vod={vod} isAdmin={isAdmin} />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <PaginationControls
+              currentPage={currentPage}
+              totalResults={filtered.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={handlePageChange}
+            />
+          )}
+        </>
       )}
     </div>
   );
