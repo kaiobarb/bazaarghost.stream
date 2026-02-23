@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { draftMode } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -35,6 +36,7 @@ export default async function StreamerPage({
 }) {
   const { id } = await params;
   const login = id.toLowerCase();
+  const { isEnabled: isAdmin } = await draftMode();
 
   // Fetch Twitch user info first (we need the numeric user_id for the VODs call)
   const twitchUser = await getTwitchUser(login);
@@ -149,13 +151,13 @@ export default async function StreamerPage({
               <span>{mergedVods.length} VODs on Twitch</span>
               <span>{totalDbVods} tracked in DB</span>
               <span>{totalDetections} total ghosts</span>
-              <span>{totalChunks} total chunks</span>
+              {isAdmin && <span>{totalChunks} total chunks</span>}
             </div>
           </div>
         </div>
 
         {/* VOD list with search/filter */}
-        <StreamerVodList vods={mergedVods} />
+        <StreamerVodList vods={mergedVods} isAdmin={isAdmin} />
       </main>
     </TooltipProvider>
   );

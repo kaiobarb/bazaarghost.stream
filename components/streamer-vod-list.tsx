@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 
 interface StreamerVodListProps {
   vods: MergedVod[];
+  isAdmin?: boolean;
 }
 
 type Filter = "all" | "bazaar" | "twitch-only" | "no-ghosts";
@@ -46,7 +47,10 @@ const statuses: { value: VodStatus; label: string; color: string }[] = [
   { value: "failed", label: "Failed", color: "bg-destructive" },
 ];
 
-export function StreamerVodList({ vods }: StreamerVodListProps) {
+export function StreamerVodList({
+  vods,
+  isAdmin = false,
+}: StreamerVodListProps) {
   const [query, setQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
@@ -138,8 +142,8 @@ export function StreamerVodList({ vods }: StreamerVodListProps) {
         )}
       </div>
 
-      {/* Filter chips */}
-      <div className="mb-4 flex flex-wrap gap-1.5">
+      {/* Filter chips + timeline legend */}
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
         {filters.map((f) => (
           <button
             key={f.value}
@@ -231,6 +235,12 @@ export function StreamerVodList({ vods }: StreamerVodListProps) {
             ))}
           </PopoverContent>
         </Popover>
+
+        {/* Timeline legend */}
+        <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="inline-block h-1.5 w-5 rounded-full bg-accent" />
+          contains gameplay of The Bazaar
+        </span>
       </div>
 
       {/* Results */}
@@ -241,7 +251,7 @@ export function StreamerVodList({ vods }: StreamerVodListProps) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {filtered.map((vod) => (
-            <VodCard key={vod.twitchId} vod={vod} />
+            <VodCard key={vod.twitchId} vod={vod} isAdmin={isAdmin} />
           ))}
         </div>
       )}

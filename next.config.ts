@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import createMDX from "@next/mdx";
+import { withVercelToolbar } from "@vercel/toolbar/plugins/next";
 
 const nextConfig: NextConfig = {
   // output: "export", // Forces static HTML export
@@ -34,4 +35,4 @@ const withMDX = createMDX({
   },
 });
 
-export default withMDX(nextConfig);
+export default withVercelToolbar()(withMDX(nextConfig));

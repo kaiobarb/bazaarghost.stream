@@ -45,9 +45,10 @@ function formatDate(iso: string): string {
 
 interface VodCardProps {
   vod: MergedVod;
+  isAdmin?: boolean;
 }
 
-export function VodCard({ vod }: VodCardProps) {
+export function VodCard({ vod, isAdmin = false }: VodCardProps) {
   const router = useRouter();
   const searchHref = vod.streamerId ? `/?streamerId=${vod.streamerId}` : "/";
 
@@ -89,11 +90,22 @@ export function VodCard({ vod }: VodCardProps) {
           <Clock className="size-3" />
           {formatDuration(vod.durationSeconds)}
         </span>
-        <span className="flex items-center gap-1">
-          <Layers className="size-3" />
-          {vod.chunks != null ? vod.chunks : "\u2014"} chunks
-        </span>
-        <span className="flex items-center gap-1">
+        {isAdmin && (
+          <span className="flex items-center gap-1">
+            <Layers className="size-3" />
+            {vod.chunks != null ? vod.chunks : "\u2014"} chunks
+          </span>
+        )}
+        <span
+          className={cn(
+            "flex items-center gap-1",
+            !vod.twitchOnly &&
+              vod.bazaarChapters &&
+              vod.bazaarChapters.length > 0 &&
+              (vod.totalDetections == null || vod.totalDetections === 0) &&
+              "text-destructive"
+          )}
+        >
           <Ghost className="size-3" />
           {vod.totalDetections != null ? vod.totalDetections : "\u2014"} ghosts
         </span>
