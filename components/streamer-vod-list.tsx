@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { format, isSameDay } from "date-fns";
+import {
+  format,
+  isSameDay,
+  isWithinInterval,
+  startOfDay,
+  endOfDay,
+} from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { Search, CalendarIcon, X, ChevronDown, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -55,7 +62,7 @@ export function StreamerVodList({
   isAdmin = false,
 }: StreamerVodListProps) {
   const [query, setQuery] = useState("");
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
   const [selectedStatus, setSelectedStatus] = useState<VodStatus | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -82,10 +89,20 @@ export function StreamerVodList({
     }
 
     // Date filter
-    if (selectedDate) {
-      result = result.filter((v) =>
-        isSameDay(new Date(v.publishedAt), selectedDate)
-      );
+    if (dateRange?.from) {
+      if (dateRange.to) {
+        // Range: inclusive of both endpoints
+        const start = startOfDay(dateRange.from);
+        const end = endOfDay(dateRange.to);
+        result = result.filter((v) =>
+          isWithinInterval(new Date(v.publishedAt), { start, end })
+        );
+      } else {
+        // Single date selected
+        result = result.filter((v) =>
+          isSameDay(new Date(v.publishedAt), dateRange.from!)
+        );
+      }
     }
 
     // Status filter
@@ -94,12 +111,12 @@ export function StreamerVodList({
     }
 
     return result;
-  }, [vods, query, selectedDate, activeFilter, selectedStatus]);
+  }, [vods, query, dateRange, activeFilter, selectedStatus]);
 
   // Reset to page 1 when any filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [query, selectedDate, activeFilter, selectedStatus]);
+  }, [query, dateRange, activeFilter, selectedStatus]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginatedVods = filtered.slice(
@@ -130,32 +147,41 @@ export function StreamerVodList({
             <Button
               variant="outline"
               className={cn(
-                "w-[160px] justify-start text-left font-normal",
-                !selectedDate && "text-muted-foreground"
+                "w-auto min-w-[160px] justify-start text-left font-normal",
+                !dateRange?.from && "text-muted-foreground"
               )}
             >
               <CalendarIcon className="size-3.5" />
-              {selectedDate
-                ? format(selectedDate, "MMM d, yyyy")
-                : "Filter By Date"}
+              {dateRange?.from ? (
+                dateRange.to ? (
+                  <>
+                    {format(dateRange.from, "MMM d")} –{" "}
+                    {format(dateRange.to, "MMM d, yyyy")}
+                  </>
+                ) : (
+                  format(dateRange.from, "MMM d, yyyy")
+                )
+              ) : (
+                "Filter by date"
+              )}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="end">
             <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
+              mode="range"
+              selected={dateRange}
+              onSelect={setDateRange}
               initialFocus
             />
           </PopoverContent>
         </Popover>
-        {selectedDate && (
+        {dateRange?.from && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSelectedDate(undefined)}
+            onClick={() => setDateRange(undefined)}
             className="shrink-0 text-muted-foreground hover:text-foreground"
-            title="Clear date"
+            title="Clear date filter"
           >
             <X className="size-3.5" />
           </Button>
