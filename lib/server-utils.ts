@@ -87,6 +87,29 @@ export async function getStreamerVods(streamerLogin: string) {
   }
 }
 
+export type StreamerWithDetections =
+  Database["public"]["Views"]["streamers_with_detections"]["Row"];
+
+export async function getAllStreamers(): Promise<StreamerWithDetections[]> {
+  "use server";
+  try {
+    const { data, error } = await supabaseServer
+      .from("streamers_with_detections")
+      .select("*")
+      .order("detection_count", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching all streamers:", error);
+      return [];
+    }
+
+    return data ?? [];
+  } catch (err) {
+    console.error("Error fetching all streamers:", err);
+    return [];
+  }
+}
+
 export async function getTopStreamers() {
   "use server";
   try {

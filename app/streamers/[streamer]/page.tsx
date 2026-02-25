@@ -125,11 +125,11 @@ export default async function StreamerPage({
       <main className="mx-auto max-w-4xl px-4 py-8">
         {/* Back link */}
         <Link
-          href="/"
+          href="/streamers"
           className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="size-3.5" />
-          Back to search
+          All streamers
         </Link>
 
         {/* Streamer header */}
