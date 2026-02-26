@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -152,6 +152,50 @@ function buildBarPath(width: number, cursorX: number | null): string {
 }
 
 // ---------------------------------------------------------------------------
+// Ghost slit tooltip — always controlled to avoid uncontrolled↔controlled flip
+// ---------------------------------------------------------------------------
+
+interface GhostSlitTooltipProps {
+  slit: {
+    x: number;
+    width: number;
+    height: number;
+    detection_id: string;
+    username: string;
+  };
+  forceOpen: boolean;
+}
+
+function GhostSlitTooltip({ slit, forceOpen }: GhostSlitTooltipProps) {
+  const [hoverOpen, setHoverOpen] = useState(false);
+  const isOpen = forceOpen || hoverOpen;
+
+  return (
+    <div
+      className="absolute top-0"
+      style={{
+        left: slit.x,
+        width: Math.max(slit.width, 12),
+        height: slit.height,
+        transform:
+          slit.width < 12
+            ? `translateX(-${(12 - slit.width) / 2}px)`
+            : undefined,
+      }}
+    >
+      <Tooltip open={isOpen} onOpenChange={setHoverOpen}>
+        <TooltipTrigger asChild>
+          <div className="size-full" />
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          {slit.username}
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Timeline sub-component
 // ---------------------------------------------------------------------------
 
@@ -175,6 +219,19 @@ function EmbedTimeline({
   const barRef = useRef<HTMLDivElement>(null);
   const [cursorX, setCursorX] = useState<number | null>(null);
   const [barWidth, setBarWidth] = useState(0);
+
+  // Measure bar width on mount and resize
+  useEffect(() => {
+    if (!barRef.current) return;
+    const measure = () => {
+      if (barRef.current)
+        setBarWidth(barRef.current.getBoundingClientRect().width);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(barRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -200,16 +257,60 @@ function EmbedTimeline({
     [duration, onSeek, ghosts]
   );
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const updateCursor = useCallback((clientX: number) => {
     if (!barRef.current) return;
     const rect = barRef.current.getBoundingClientRect();
-    setCursorX(e.clientX - rect.left);
+    setCursorX(clientX - rect.left);
     setBarWidth(rect.width);
   }, []);
 
-  const handleMouseLeave = useCallback(() => {
+  const clearCursor = useCallback(() => {
     setCursorX(null);
   }, []);
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => updateCursor(e.clientX),
+    [updateCursor]
+  );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      if (e.touches.length > 0) updateCursor(e.touches[0].clientX);
+    },
+    [updateCursor]
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      // On release, seek to nearest ghost at last cursor position, then clear
+      if (
+        !barRef.current ||
+        duration <= 0 ||
+        ghosts.length === 0 ||
+        cursorX === null
+      ) {
+        clearCursor();
+        return;
+      }
+      const rect = barRef.current.getBoundingClientRect();
+      let nearestGhost = ghosts[0];
+      let nearestDist = Math.abs(
+        (ghosts[0].frame_time_seconds / duration) * rect.width - cursorX
+      );
+      for (let i = 1; i < ghosts.length; i++) {
+        const d = Math.abs(
+          (ghosts[i].frame_time_seconds / duration) * rect.width - cursorX
+        );
+        if (d < nearestDist) {
+          nearestDist = d;
+          nearestGhost = ghosts[i];
+        }
+      }
+      onSeek(nearestGhost.frame_time_seconds);
+      clearCursor();
+    },
+    [duration, ghosts, cursorX, onSeek, clearCursor]
+  );
 
   // Parse bazaar chapter start/end pairs from the flat array
   const segments = useMemo(() => {
@@ -281,10 +382,15 @@ function EmbedTimeline({
   return (
     <div
       ref={barRef}
+      data-timeline
       onClick={handleClick}
       onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className="relative w-full cursor-pointer"
+      onMouseLeave={clearCursor}
+      onTouchStart={handleTouchMove}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={clearCursor}
+      className="relative w-full cursor-pointer touch-none"
       style={{ height: BAR_HEIGHT_MAX }}
     >
       {/* Unified SVG: bar + chapters + ghost slits + seek indicator */}
@@ -344,28 +450,11 @@ function EmbedTimeline({
 
       {/* Invisible DOM overlays for Radix tooltips */}
       {svgData?.ghostSlits.map((slit) => (
-        <div
+        <GhostSlitTooltip
           key={slit.detection_id}
-          className="absolute top-0"
-          style={{
-            left: slit.x,
-            width: Math.max(slit.width, 12),
-            height: slit.height,
-            transform:
-              slit.width < 12
-                ? `translateX(-${(12 - slit.width) / 2}px)`
-                : undefined,
-          }}
-        >
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="size-full" />
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              {slit.username}
-            </TooltipContent>
-          </Tooltip>
-        </div>
+          slit={slit}
+          forceOpen={slit.isSnapped && cursorX !== null}
+        />
       ))}
     </div>
   );
@@ -487,7 +576,12 @@ export function EmbedPanel() {
         onClick={(e) => {
           // Only toggle if the click wasn't on an interactive element
           const target = e.target as HTMLElement;
-          if (target.closest("button, a, [role=button], svg, canvas")) return;
+          if (
+            target.closest(
+              "button, a, [role=button], svg, canvas, [data-timeline]"
+            )
+          )
+            return;
           if (isReady && duration > 0) setTimelineOpen((o) => !o);
         }}
         className="cursor-pointer"

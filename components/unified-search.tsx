@@ -90,7 +90,11 @@ export default function UnifiedSearch({
 }: UnifiedSearchProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isVisible: embedVisible, videoId: activeVideoId } = useEmbed();
+  const {
+    isVisible: embedVisible,
+    videoId: activeVideoId,
+    currentTime: activeTime,
+  } = useEmbed();
 
   // ---- URL-driven initial state ----
   const initialType = (searchParams.get("type") as SearchType) || "ghosts";
@@ -655,7 +659,10 @@ export default function UnifiedSearch({
                       <GhostResultRow
                         key={ghost.detection_id}
                         ghost={ghost}
-                        isActive={activeVideoId === ghost.vod_source_id}
+                        isActive={
+                          activeVideoId === ghost.vod_source_id &&
+                          Math.abs(activeTime - ghost.frame_time_seconds) < 5
+                        }
                         onNavigateToStreamer={navigateToStreamerVods}
                         onNavigateToVod={navigateToVodGhosts}
                       />
