@@ -165,6 +165,13 @@ export type Database = {
             foreignKeyName: "chunks_vod_id_fkey"
             columns: ["vod_id"]
             isOneToOne: false
+            referencedRelation: "vod_embed_info"
+            referencedColumns: ["vod_id"]
+          },
+          {
+            foreignKeyName: "chunks_vod_id_fkey"
+            columns: ["vod_id"]
+            isOneToOne: false
             referencedRelation: "vod_stats"
             referencedColumns: ["id"]
           },
@@ -237,6 +244,13 @@ export type Database = {
             columns: ["vod_id"]
             isOneToOne: false
             referencedRelation: "detection_search_debug"
+            referencedColumns: ["vod_id"]
+          },
+          {
+            foreignKeyName: "detections_vod_id_fkey"
+            columns: ["vod_id"]
+            isOneToOne: false
+            referencedRelation: "vod_embed_info"
             referencedColumns: ["vod_id"]
           },
           {
@@ -513,6 +527,13 @@ export type Database = {
             referencedRelation: "streamers_with_detections"
             referencedColumns: ["streamer_id"]
           },
+          {
+            foreignKeyName: "vods_streamer_id_fkey"
+            columns: ["streamer_id"]
+            isOneToOne: false
+            referencedRelation: "vod_embed_info"
+            referencedColumns: ["streamer_id"]
+          },
         ]
       }
     }
@@ -601,6 +622,22 @@ export type Database = {
           streamer_id: number | null
           streamer_login: string | null
           vod_count: number | null
+        }
+        Relationships: []
+      }
+      vod_embed_info: {
+        Row: {
+          availability: Database["public"]["Enums"]["vod_availability"] | null
+          bazaar_chapters: number[] | null
+          duration_seconds: number | null
+          published_at: string | null
+          streamer_avatar: string | null
+          streamer_display_name: string | null
+          streamer_id: number | null
+          streamer_login: string | null
+          title: string | null
+          vod_id: number | null
+          vod_source_id: string | null
         }
         Relationships: []
       }
