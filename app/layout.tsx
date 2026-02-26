@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { VercelToolbar } from "@vercel/toolbar/next";
 import { ThemeProvider } from "@/components/theme-provider";
+import { EmbedProvider } from "@/components/embed-provider";
 import Navbar from "@/components/navbar";
 import "./globals.css";
 
@@ -158,10 +159,12 @@ export default async function RootLayout({
         className={`antialiased font-sans ${inter.variable} ${jetbrainsMono.variable} ${averiaLibre.variable}`}
       >
         <ThemeProvider>
-          <div className="min-h-screen bg-background">
-            <Navbar />
-            {children}
-          </div>
+          <EmbedProvider>
+            <div className="min-h-screen bg-background">
+              <Navbar />
+              {children}
+            </div>
+          </EmbedProvider>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />

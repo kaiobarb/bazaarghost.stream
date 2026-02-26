@@ -51,10 +51,16 @@ export default function Navbar() {
           {/* Desktop Navigation - Hidden on mobile */}
           <div className="hidden md:flex items-center gap-8">
             <Link
-              href="/"
+              href="/search"
               className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors"
             >
               Search
+            </Link>
+            <Link
+              href="/streamers"
+              className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors"
+            >
+              Streamers
             </Link>
             <Link
               href="/how-it-works"
@@ -147,11 +153,18 @@ export default function Navbar() {
               <div className="flex flex-col gap-4">
                 {/* Mobile Navigation Links */}
                 <Link
-                  href="/"
+                  href="/search"
                   onClick={() => setIsOpen(false)}
                   className="text-lg font-medium text-foreground/70 hover:text-foreground transition-colors"
                 >
                   Search
+                </Link>
+                <Link
+                  href="/streamers"
+                  onClick={() => setIsOpen(false)}
+                  className="text-lg font-medium text-foreground/70 hover:text-foreground transition-colors"
+                >
+                  Streamers
                 </Link>
                 <Link
                   href="/how-it-works"

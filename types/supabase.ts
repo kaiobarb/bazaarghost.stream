@@ -7,10 +7,30 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -241,6 +261,7 @@ export type Database = {
           discord_user_id: string
           enabled: boolean
           guild_id: string | null
+          notification_count: number
           notify_type: string
           username: string
           username_lower: string
@@ -250,6 +271,7 @@ export type Database = {
           discord_user_id: string
           enabled?: boolean
           guild_id?: string | null
+          notification_count?: number
           notify_type?: string
           username: string
           username_lower?: string
@@ -259,6 +281,7 @@ export type Database = {
           discord_user_id?: string
           enabled?: boolean
           guild_id?: string | null
+          notification_count?: number
           notify_type?: string
           username?: string
           username_lower?: string
@@ -350,6 +373,7 @@ export type Database = {
         Row: {
           created_at: string | null
           display_name: string | null
+          eventsub_subscription_id: string | null
           has_vods: boolean | null
           id: number
           login: string
@@ -364,6 +388,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           display_name?: string | null
+          eventsub_subscription_id?: string | null
           has_vods?: boolean | null
           id: number
           login: string
@@ -378,6 +403,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           display_name?: string | null
+          eventsub_subscription_id?: string | null
           has_vods?: boolean | null
           id?: number
           login?: string
@@ -505,6 +531,7 @@ export type Database = {
           streamer_display_name: string | null
           streamer_id: number | null
           streamer_login: string | null
+          truncated: boolean | null
           username: string | null
           vod_availability:
             | Database["public"]["Enums"]["vod_availability"]
@@ -532,6 +559,7 @@ export type Database = {
           streamer_display_name: string | null
           streamer_id: number | null
           streamer_login: string | null
+          truncated: boolean | null
           username: string | null
           vod_availability:
             | Database["public"]["Enums"]["vod_availability"]
@@ -630,9 +658,11 @@ export type Database = {
         Args: {
           date_range_filter?: string
           result_limit?: number
+          result_offset?: number
           search_query?: string
           similarity_threshold?: number
           streamer_id_filter?: number
+          vod_source_id_filter?: string
         }
         Returns: {
           actual_timestamp: string
@@ -645,6 +675,8 @@ export type Database = {
           streamer_display_name: string
           streamer_id: number
           streamer_login: string
+          total_count: number
+          truncated: boolean
           username: string
           vod_id: number
           vod_source_id: string
@@ -670,6 +702,7 @@ export type Database = {
           streamer_display_name: string
           streamer_id: number
           streamer_login: string
+          truncated: boolean
           username: string
           vod_id: number
           vod_source_id: string
@@ -680,7 +713,6 @@ export type Database = {
         Args: {
           date_range_filter?: string
           result_limit?: number
-          result_offset?: number
           search_query?: string
           similarity_threshold?: number
           streamer_id_filter?: number
@@ -697,6 +729,7 @@ export type Database = {
           streamer_id: number
           streamer_login: string
           total_count: number
+          truncated: boolean
           username: string
           vod_id: number
           vod_source_id: string
@@ -740,11 +773,16 @@ export type Database = {
           streamer_login: string
           total_detections: number
           total_vods: number
+          truncated: boolean
           username: string
           vod_id: number
           vod_source_id: string
           vod_url: string
         }[]
+      }
+      increment_notification_count: {
+        Args: { p_discord_user_ids: string[]; p_username: string }
+        Returns: undefined
       }
       process_pending_vods: {
         Args: { max_vods?: number }
@@ -914,6 +952,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       chunk_source: ["vod", "live"],
@@ -930,3 +971,4 @@ export const Constants = {
     },
   },
 } as const
+
