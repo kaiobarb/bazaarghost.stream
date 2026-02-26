@@ -5,6 +5,8 @@ import Image from "next/image";
 import {
   ArrowLeft,
   ArrowRight,
+  ChevronDown,
+  ChevronUp,
   Copy,
   Pause,
   Play,
@@ -40,6 +42,119 @@ function formatTimestamp(seconds: number): string {
 // Timeline sub-component
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Fisheye constants
+// ---------------------------------------------------------------------------
+
+/** Radius of influence in pixels around the cursor for vertical bulge */
+const FISHEYE_RADIUS = 80;
+/** Max height of the bar at cursor center (px). Rest height is 8px. */
+const BAR_HEIGHT_REST = 8;
+const BAR_HEIGHT_MAX = 24;
+/** Max distance (px) at which the nearest ghost will snap to cursor */
+const SNAP_THRESHOLD = 40;
+/** Horizontal push radius — ghosts within this range get displaced */
+const PUSH_RADIUS = 80;
+/** Max push displacement in pixels */
+const PUSH_STRENGTH = 20;
+
+/**
+ * Compute a smooth 0→1 influence factor based on distance from cursor.
+ * Returns 0 outside FISHEYE_RADIUS, 1 at the cursor, smooth in between.
+ */
+function fisheyeInfluence(px: number, cursorPx: number): number {
+  const d = Math.abs(px - cursorPx);
+  if (d >= FISHEYE_RADIUS) return 0;
+  // Cosine bell — smooth at both the peak and the edges (zero derivative)
+  return (1 + Math.cos((Math.PI * d) / FISHEYE_RADIUS)) / 2;
+}
+
+/** Bar height at a given pixel X position */
+function barHeightAt(px: number, cursorX: number | null): number {
+  const influence = cursorX !== null ? fisheyeInfluence(px, cursorX) : 0;
+  return BAR_HEIGHT_REST + influence * (BAR_HEIGHT_MAX - BAR_HEIGHT_REST);
+}
+
+/**
+ * Compute horizontal offsets for all ghosts.
+ * - The nearest ghost within SNAP_THRESHOLD snaps toward the cursor.
+ * - All other ghosts within PUSH_RADIUS get pushed away from the cursor.
+ */
+function computeGhostOffsets(
+  ghostPositions: number[],
+  cursorX: number | null
+): { offsets: number[]; snappedIdx: number | null } {
+  const offsets = new Array(ghostPositions.length).fill(0) as number[];
+  if (cursorX === null || ghostPositions.length === 0)
+    return { offsets, snappedIdx: null };
+
+  // Find nearest ghost
+  let nearestIdx = 0;
+  let nearestDist = Math.abs(ghostPositions[0] - cursorX);
+  for (let i = 1; i < ghostPositions.length; i++) {
+    const d = Math.abs(ghostPositions[i] - cursorX);
+    if (d < nearestDist) {
+      nearestDist = d;
+      nearestIdx = i;
+    }
+  }
+
+  for (let i = 0; i < ghostPositions.length; i++) {
+    const px = ghostPositions[i];
+    const dist = px - cursorX;
+    const absDist = Math.abs(dist);
+
+    if (i === nearestIdx && nearestDist <= SNAP_THRESHOLD) {
+      // Snap nearest ghost toward cursor
+      const snapT = 1 - nearestDist / SNAP_THRESHOLD;
+      const ease = snapT * snapT;
+      offsets[i] = -dist * ease * 0.8; // move 80% of the way to cursor at max
+    } else if (absDist < PUSH_RADIUS) {
+      // Push other ghosts away from cursor
+      const t = 1 - absDist / PUSH_RADIUS;
+      const ease = t * t;
+      const sign = dist >= 0 ? 1 : -1;
+      offsets[i] = sign * ease * PUSH_STRENGTH;
+    }
+  }
+
+  const snappedIdx = nearestDist <= SNAP_THRESHOLD ? nearestIdx : null;
+  return { offsets, snappedIdx };
+}
+
+/**
+ * Generate an SVG path for the timeline bar that bulges downward around the cursor.
+ * Top edge is flat at y=0; bottom edge curves down at the cursor.
+ */
+function buildBarPath(width: number, cursorX: number | null): string {
+  if (width <= 0) return "";
+
+  const steps = 200;
+  const dx = width / steps;
+
+  const points: { x: number; y: number }[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const x = i * dx;
+    points.push({ x, y: barHeightAt(x, cursorX) });
+  }
+
+  // Top-left → top-right (flat), then bottom edge curves back right-to-left
+  let d = `M 0 0 L ${width} 0`;
+  d += ` L ${points[points.length - 1].x} ${points[points.length - 1].y}`;
+  for (let i = points.length - 2; i >= 0; i--) {
+    const prev = points[i + 1];
+    const curr = points[i];
+    const cpx = (prev.x + curr.x) / 2;
+    d += ` C ${cpx} ${prev.y} ${cpx} ${curr.y} ${curr.x} ${curr.y}`;
+  }
+  d += ` Z`;
+  return d;
+}
+
+// ---------------------------------------------------------------------------
+// Timeline sub-component
+// ---------------------------------------------------------------------------
+
 interface EmbedTimelineProps {
   currentTime: number;
   duration: number;
@@ -58,88 +173,200 @@ function EmbedTimeline({
   onSeek,
 }: EmbedTimelineProps) {
   const barRef = useRef<HTMLDivElement>(null);
+  const [cursorX, setCursorX] = useState<number | null>(null);
+  const [barWidth, setBarWidth] = useState(0);
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!barRef.current || duration <= 0) return;
+      if (!barRef.current || duration <= 0 || ghosts.length === 0) return;
       const rect = barRef.current.getBoundingClientRect();
-      const fraction = Math.max(
-        0,
-        Math.min(1, (e.clientX - rect.left) / rect.width)
+      const clickX = e.clientX - rect.left;
+      // Find the ghost closest to the click position
+      let nearestGhost = ghosts[0];
+      let nearestDist = Math.abs(
+        (ghosts[0].frame_time_seconds / duration) * rect.width - clickX
       );
-      onSeek(fraction * duration);
+      for (let i = 1; i < ghosts.length; i++) {
+        const d = Math.abs(
+          (ghosts[i].frame_time_seconds / duration) * rect.width - clickX
+        );
+        if (d < nearestDist) {
+          nearestDist = d;
+          nearestGhost = ghosts[i];
+        }
+      }
+      onSeek(nearestGhost.frame_time_seconds);
     },
-    [duration, onSeek]
+    [duration, onSeek, ghosts]
   );
 
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!barRef.current) return;
+    const rect = barRef.current.getBoundingClientRect();
+    setCursorX(e.clientX - rect.left);
+    setBarWidth(rect.width);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setCursorX(null);
+  }, []);
+
   // Parse bazaar chapter start/end pairs from the flat array
-  const segments: { start: number; end: number }[] = [];
-  if (bazaarChapters && bazaarChapters.length >= 2) {
-    for (let i = 0; i < bazaarChapters.length - 1; i += 2) {
-      segments.push({ start: bazaarChapters[i], end: bazaarChapters[i + 1] });
+  const segments = useMemo(() => {
+    const segs: { start: number; end: number }[] = [];
+    if (bazaarChapters && bazaarChapters.length >= 2) {
+      for (let i = 0; i < bazaarChapters.length - 1; i += 2) {
+        segs.push({ start: bazaarChapters[i], end: bazaarChapters[i + 1] });
+      }
     }
-  }
+    return segs;
+  }, [bazaarChapters]);
+
+  // Compute all SVG data in one pass
+  const svgData = useMemo(() => {
+    if (barWidth <= 0 || duration <= 0) return null;
+
+    const barPath = buildBarPath(barWidth, cursorX);
+
+    // Chapter rects
+    const chapterRects = segments.map((seg) => ({
+      x: (seg.start / duration) * barWidth,
+      width: Math.max(((seg.end - seg.start) / duration) * barWidth, 2),
+    }));
+
+    // Ghost slit positions + dimensions
+    const naturalPositions = ghosts.map(
+      (g) => (g.frame_time_seconds / duration) * barWidth
+    );
+    const { offsets, snappedIdx } = computeGhostOffsets(
+      naturalPositions,
+      cursorX
+    );
+    const ghostSlits = ghosts.map((ghost, i) => {
+      const displacedX = Math.max(
+        0,
+        Math.min(barWidth, naturalPositions[i] + offsets[i])
+      );
+      const h = barHeightAt(displacedX, cursorX);
+      const isActive = ghost.detection_id === currentGhostId;
+      const isSnapped = i === snappedIdx;
+      const w = isSnapped ? 4 : isActive ? 4 : 2;
+      return {
+        x: Math.max(0, Math.min(barWidth - w, displacedX - w / 2)),
+        y: 0,
+        width: w,
+        height: isActive ? h + 4 : h,
+        isActive,
+        isSnapped,
+        username: ghost.username,
+        detection_id: ghost.detection_id,
+      };
+    });
+
+    // Seek indicator
+    const seekX = (currentTime / duration) * barWidth;
+    const seekH = barHeightAt(seekX, cursorX) + 2;
+
+    return { barPath, chapterRects, ghostSlits, seekX, seekH };
+  }, [
+    barWidth,
+    cursorX,
+    duration,
+    segments,
+    ghosts,
+    currentGhostId,
+    currentTime,
+  ]);
 
   return (
     <div
       ref={barRef}
       onClick={handleClick}
-      className="group relative h-2 w-full cursor-pointer rounded-full bg-muted"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="relative w-full cursor-pointer"
+      style={{ height: BAR_HEIGHT_MAX }}
     >
-      {/* Bazaar chapter segments */}
-      {segments.map((seg, i) => {
-        if (duration <= 0) return null;
-        const left = (seg.start / duration) * 100;
-        const width = ((seg.end - seg.start) / duration) * 100;
-        return (
-          <div
-            key={i}
-            className="absolute top-0 h-full rounded-full bg-chart-3"
-            style={{
-              left: `${left}%`,
-              width: `${Math.max(width, 0.5)}%`,
-            }}
+      {/* Unified SVG: bar + chapters + ghost slits + seek indicator */}
+      {svgData && (
+        <svg
+          className="absolute inset-0 overflow-visible"
+          width={barWidth}
+          height={BAR_HEIGHT_MAX}
+        >
+          <defs>
+            <clipPath id="bar-bulge">
+              <path d={svgData.barPath} />
+            </clipPath>
+          </defs>
+
+          {/* Muted background bar */}
+          <path d={svgData.barPath} className="fill-muted" opacity={0.5} />
+
+          {/* Bazaar chapter segments clipped to bar shape */}
+          {svgData.chapterRects.map((rect, i) => (
+            <rect
+              key={i}
+              x={rect.x}
+              y={0}
+              width={rect.width}
+              height={BAR_HEIGHT_MAX}
+              className="fill-chart-3"
+              clipPath="url(#bar-bulge)"
+            />
+          ))}
+
+          {/* Ghost slits */}
+          {svgData.ghostSlits.map((slit) => (
+            <rect
+              key={slit.detection_id}
+              x={slit.x}
+              y={slit.y}
+              width={slit.width}
+              height={slit.height}
+              rx={1}
+              className="fill-accent"
+            />
+          ))}
+
+          {/* Seek position indicator */}
+          <rect
+            x={svgData.seekX - 1.5}
+            y={0}
+            width={3}
+            height={svgData.seekH}
+            rx={1.5}
+            className="fill-black stroke-white"
+            strokeWidth={1}
           />
-        );
-      })}
-
-      {/* Ghost markers */}
-      {ghosts.map((ghost) => {
-        if (duration <= 0) return null;
-        const left = (ghost.frame_time_seconds / duration) * 100;
-        const isActive = ghost.detection_id === currentGhostId;
-        return (
-          <div
-            key={ghost.detection_id}
-            className="absolute top-0 h-full"
-            style={{ left: `${left}%` }}
-          >
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  className={cn(
-                    "-translate-x-1/2",
-                    isActive
-                      ? "-mt-1.5 h-[calc(100%+12px)] w-[5px] rounded-full bg-foreground"
-                      : "h-full w-0.5 bg-foreground/60"
-                  )}
-                />
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                {ghost.username}
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        );
-      })}
-
-      {/* Current seek position — rendered last to sit on top of everything */}
-      {duration > 0 && (
-        <div
-          className="absolute -top-1 h-[calc(100%+8px)] w-[3px] -translate-x-1/2 rounded-full bg-black ring-1 ring-white"
-          style={{ left: `${(currentTime / duration) * 100}%` }}
-        />
+        </svg>
       )}
+
+      {/* Invisible DOM overlays for Radix tooltips */}
+      {svgData?.ghostSlits.map((slit) => (
+        <div
+          key={slit.detection_id}
+          className="absolute top-0"
+          style={{
+            left: slit.x,
+            width: Math.max(slit.width, 12),
+            height: slit.height,
+            transform:
+              slit.width < 12
+                ? `translateX(-${(12 - slit.width) / 2}px)`
+                : undefined,
+          }}
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="size-full" />
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {slit.username}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      ))}
     </div>
   );
 }
@@ -190,6 +417,25 @@ export function EmbedPanel() {
     return match;
   }, [sortedGhosts, currentTime]);
 
+  // ---- Boundary detection: at first/last ghost ----
+  const isAtFirstGhost = useMemo(() => {
+    if (sortedGhosts.length === 0 || !currentGhost) return true;
+    return (
+      currentGhost.detection_id === sortedGhosts[0].detection_id &&
+      currentTime < sortedGhosts[0].frame_time_seconds + 2
+    );
+  }, [sortedGhosts, currentGhost, currentTime]);
+
+  const isAtLastGhost = useMemo(() => {
+    if (sortedGhosts.length === 0 || !currentGhost) return true;
+    return (
+      currentGhost.detection_id ===
+        sortedGhosts[sortedGhosts.length - 1].detection_id &&
+      currentTime >=
+        sortedGhosts[sortedGhosts.length - 1].frame_time_seconds - 2
+    );
+  }, [sortedGhosts, currentGhost, currentTime]);
+
   // ---- Arrow navigation: prev/next ghost ----
   const navigatePrevGhost = useCallback(() => {
     if (sortedGhosts.length === 0) return;
@@ -218,30 +464,13 @@ export function EmbedPanel() {
     seek(sortedGhosts[sortedGhosts.length - 1].frame_time_seconds);
   }, [sortedGhosts, currentTime, seek]);
 
-  // ---- Hover state for timeline peek (debounced to survive tooltip portals) ----
-  const [isHovered, setIsHovered] = useState(false);
-  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleMouseEnter = useCallback(() => {
-    if (leaveTimer.current) {
-      clearTimeout(leaveTimer.current);
-      leaveTimer.current = null;
-    }
-    setIsHovered(true);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    leaveTimer.current = setTimeout(() => setIsHovered(false), 150);
-  }, []);
+  // ---- Timeline toggle ----
+  const [timelineOpen, setTimelineOpen] = useState(false);
 
   if (!isVisible || !videoId) return null;
 
   return (
-    <div
-      className="flex flex-col overflow-hidden rounded-lg border border-border bg-card"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
       {/* Player area */}
       <div className="relative aspect-video w-full overflow-hidden rounded-t-lg bg-black">
         <div id={containerId} className="size-full" />
@@ -252,162 +481,189 @@ export function EmbedPanel() {
         )}
       </div>
 
-      {/* Row 1: Meta + current ghost + controls — 3-col grid for true centering */}
-      <div className="relative z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-t border-border bg-card px-3 py-2">
-        {/* Left: streamer meta */}
-        <div className="flex min-w-0 items-center gap-2">
-          {meta && (
-            <>
-              <Avatar className="size-6 shrink-0">
-                <AvatarImage
-                  src={meta.streamerAvatar}
-                  alt={meta.streamerName}
+      {/* Controls area — clicking unclaimed space toggles timeline */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      <div
+        onClick={(e) => {
+          // Only toggle if the click wasn't on an interactive element
+          const target = e.target as HTMLElement;
+          if (target.closest("button, a, [role=button], svg, canvas")) return;
+          if (isReady && duration > 0) setTimelineOpen((o) => !o);
+        }}
+        className="cursor-pointer"
+      >
+        {/* Row 1: Meta + current ghost + controls — 3-col grid for true centering */}
+        <div className="relative z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-t border-border bg-card px-3 py-2">
+          {/* Left: streamer meta */}
+          <div className="flex min-w-0 items-center gap-2">
+            {meta && (
+              <>
+                <Avatar className="size-6 shrink-0">
+                  <AvatarImage
+                    src={meta.streamerAvatar}
+                    alt={meta.streamerName}
+                  />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
+                    {meta.streamerName[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="truncate text-xs font-medium text-card-foreground">
+                  {meta.streamerName}
+                </span>
+              </>
+            )}
+            {!meta && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Video className="size-3" />
+                <span>Video {videoId}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Center: prev arrow + current ghost name + next arrow */}
+          <div className="flex items-center justify-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-6 shrink-0 text-muted-foreground hover:text-foreground"
+              title="Previous ghost"
+              onClick={navigatePrevGhost}
+              disabled={isAtFirstGhost}
+            >
+              <ArrowLeft className="size-3.5" />
+            </Button>
+            {currentGhost ? (
+              <button
+                type="button"
+                onClick={() => seek(currentGhost.frame_time_seconds)}
+                className="flex min-w-[150px] cursor-pointer items-center justify-center gap-1.5 text-sm font-medium text-foreground hover:text-accent transition-colors"
+              >
+                {currentGhost.rank && (
+                  <Image
+                    src={`/${currentGhost.rank.toLowerCase()}.webp`}
+                    alt={currentGhost.rank}
+                    width={24}
+                    height={24}
+                    className="shrink-0"
+                  />
+                )}
+                {currentGhost.username}
+              </button>
+            ) : (
+              <span className="text-xs text-muted-foreground">No ghost</span>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-6 shrink-0 text-muted-foreground hover:text-foreground"
+              title="Next ghost"
+              onClick={navigateNextGhost}
+              disabled={isAtLastGhost}
+            >
+              <ArrowRight className="size-3.5" />
+            </Button>
+          </div>
+
+          {/* Right: controls */}
+          <div className="flex items-center justify-end gap-0.5">
+            {/* Play / Pause */}
+            {isReady && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 text-muted-foreground hover:text-foreground"
+                title={isPaused ? "Play" : "Pause"}
+                onClick={togglePlay}
+              >
+                {isPaused ? (
+                  <Play className="size-3" />
+                ) : (
+                  <Pause className="size-3" />
+                )}
+              </Button>
+            )}
+
+            {/* Mute / Unmute */}
+            {isReady && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 text-muted-foreground hover:text-foreground"
+                title={isMuted ? "Unmute" : "Mute"}
+                onClick={toggleMute}
+              >
+                {isMuted ? (
+                  <VolumeX className="size-3" />
+                ) : (
+                  <Volume2 className="size-3" />
+                )}
+              </Button>
+            )}
+
+            {/* Copy link at timestamp */}
+            {timestamp != null && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 text-muted-foreground hover:text-foreground"
+                title="Copy Twitch link at timestamp"
+                onClick={() => {
+                  const t = secondsToTwitchTimestamp(timestamp);
+                  const url = `https://www.twitch.tv/videos/${videoId}?t=${t}`;
+                  navigator.clipboard.writeText(url);
+                }}
+              >
+                <Copy className="size-3" />
+              </Button>
+            )}
+
+            {/* Close */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 text-muted-foreground hover:text-foreground"
+              title="Close player"
+              onClick={hideEmbed}
+            >
+              <X className="size-3" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Timeline — animated expand/collapse */}
+        {isReady && duration > 0 && (
+          <div
+            className={cn(
+              "grid transition-[grid-template-rows] duration-200 ease-out",
+              timelineOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+            )}
+          >
+            <div className="overflow-hidden">
+              <div className="px-3 py-3">
+                <EmbedTimeline
+                  currentTime={currentTime}
+                  duration={duration}
+                  bazaarChapters={bazaarChapters}
+                  ghosts={sortedGhosts}
+                  currentGhostId={currentGhost?.detection_id ?? null}
+                  onSeek={seek}
                 />
-                <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
-                  {meta.streamerName[0]?.toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="truncate text-xs font-medium text-card-foreground">
-                {meta.streamerName}
-              </span>
-            </>
-          )}
-          {!meta && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Video className="size-3" />
-              <span>Video {videoId}</span>
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Center: prev arrow + current ghost name + next arrow */}
-        <div className="flex items-center justify-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6 shrink-0 text-muted-foreground hover:text-foreground"
-            title="Previous ghost"
-            onClick={navigatePrevGhost}
-            disabled={sortedGhosts.length === 0}
-          >
-            <ArrowLeft className="size-3.5" />
-          </Button>
-          {currentGhost ? (
-            <button
-              type="button"
-              onClick={() => seek(currentGhost.frame_time_seconds)}
-              className="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-foreground hover:text-accent transition-colors"
-            >
-              {currentGhost.rank && (
-                <Image
-                  src={`/${currentGhost.rank.toLowerCase()}.webp`}
-                  alt={currentGhost.rank}
-                  width={24}
-                  height={24}
-                  className="shrink-0"
-                />
-              )}
-              {currentGhost.username}
-            </button>
-          ) : (
-            <span className="text-xs text-muted-foreground">No ghost</span>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6 shrink-0 text-muted-foreground hover:text-foreground"
-            title="Next ghost"
-            onClick={navigateNextGhost}
-            disabled={sortedGhosts.length === 0}
-          >
-            <ArrowRight className="size-3.5" />
-          </Button>
-        </div>
-
-        {/* Right: controls */}
-        <div className="flex items-center justify-end gap-0.5">
-          {/* Play / Pause */}
-          {isReady && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 text-muted-foreground hover:text-foreground"
-              title={isPaused ? "Play" : "Pause"}
-              onClick={togglePlay}
-            >
-              {isPaused ? (
-                <Play className="size-3" />
-              ) : (
-                <Pause className="size-3" />
-              )}
-            </Button>
-          )}
-
-          {/* Mute / Unmute */}
-          {isReady && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 text-muted-foreground hover:text-foreground"
-              title={isMuted ? "Unmute" : "Mute"}
-              onClick={toggleMute}
-            >
-              {isMuted ? (
-                <VolumeX className="size-3" />
-              ) : (
-                <Volume2 className="size-3" />
-              )}
-            </Button>
-          )}
-
-          {/* Copy link at timestamp */}
-          {timestamp != null && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 text-muted-foreground hover:text-foreground"
-              title="Copy Twitch link at timestamp"
-              onClick={() => {
-                const t = secondsToTwitchTimestamp(timestamp);
-                const url = `https://www.twitch.tv/videos/${videoId}?t=${t}`;
-                navigator.clipboard.writeText(url);
-              }}
-            >
-              <Copy className="size-3" />
-            </Button>
-          )}
-
-          {/* Close */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7 text-muted-foreground hover:text-foreground"
-            title="Close player"
-            onClick={hideEmbed}
-          >
-            <X className="size-3" />
-          </Button>
-        </div>
+        {/* Chevron indicator */}
+        {isReady && duration > 0 && (
+          <div className="flex w-full items-center justify-end px-2 py-0.5 text-muted-foreground">
+            {timelineOpen ? (
+              <ChevronUp className="size-3.5" />
+            ) : (
+              <ChevronDown className="size-3.5" />
+            )}
+          </div>
+        )}
       </div>
-
-      {/* Row 2: Timeline — peeks out from behind Row 1 on hover */}
-      {isReady && duration > 0 && (
-        <div
-          className={cn(
-            "px-3 py-3 transition-[margin] duration-200 ease-out",
-            isHovered ? "mt-0" : "-mt-8"
-          )}
-        >
-          <EmbedTimeline
-            currentTime={currentTime}
-            duration={duration}
-            bazaarChapters={bazaarChapters}
-            ghosts={sortedGhosts}
-            currentGhostId={currentGhost?.detection_id ?? null}
-            onSeek={seek}
-          />
-        </div>
-      )}
     </div>
   );
 }

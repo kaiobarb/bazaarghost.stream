@@ -151,6 +151,7 @@ export function EmbedProvider({ children }: { children: ReactNode }) {
   const playerRef = useRef<any>(null);
   const currentVideoRef = useRef<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const seekTargetRef = useRef<number | null>(null);
 
   // ---- Poll player state ----
   useEffect(() => {
@@ -166,7 +167,18 @@ export function EmbedProvider({ children }: { children: ReactNode }) {
       const p = playerRef.current;
       if (!p) return;
       try {
-        setCurrentTime(p.getCurrentTime() ?? 0);
+        const polledTime = p.getCurrentTime() ?? 0;
+        // If we're waiting for a seek to land, only resume polling currentTime
+        // once the player is within 2s of the target
+        if (seekTargetRef.current !== null) {
+          if (Math.abs(polledTime - seekTargetRef.current) < 2) {
+            seekTargetRef.current = null;
+            setCurrentTime(polledTime);
+          }
+          // otherwise skip — keep the optimistic value
+        } else {
+          setCurrentTime(polledTime);
+        }
         setDuration(p.getDuration() ?? 0);
         setIsPaused(p.isPaused() ?? true);
         setIsMuted(p.getMuted() ?? false);
@@ -360,6 +372,8 @@ export function EmbedProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const seek = useCallback((seconds: number) => {
+    seekTargetRef.current = seconds; // suppress poll until player catches up
+    setCurrentTime(seconds); // optimistic update
     playerRef.current?.seek(seconds);
   }, []);
 
