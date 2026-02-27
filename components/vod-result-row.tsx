@@ -25,6 +25,8 @@ interface VodResultRowProps {
   isActive: boolean;
   onNavigateToStreamer: (streamerId: number, name: string) => void;
   onNavigateToGhosts: (vodSourceId: string, title: string) => void;
+  /** Optional override for the row click (used by SearchPanel for route-based navigation). */
+  onRowClick?: () => void;
 }
 
 function formatDate(iso: string): string {
@@ -47,6 +49,7 @@ export function VodResultRow({
   isActive,
   onNavigateToStreamer,
   onNavigateToGhosts,
+  onRowClick,
 }: VodResultRowProps) {
   const { setEmbed } = useEmbed();
 
@@ -57,11 +60,14 @@ export function VodResultRow({
       vodTitle: vod.title,
       date: formatDate(vod.published_at),
     });
+    onRowClick?.();
   };
 
   return (
     <div
+      onClick={handlePlay}
       className={cn(
+        "cursor-pointer",
         "overflow-hidden rounded-lg border transition-colors",
         isActive
           ? "border-primary bg-primary/5"

@@ -217,7 +217,9 @@ export function EmbedProvider({ children }: { children: ReactNode }) {
       const [vodResult, detectionsResult] = await Promise.all([
         supabase
           .from("vod_embed_info")
-          .select("duration_seconds, bazaar_chapters")
+          .select(
+            "duration_seconds, bazaar_chapters, title, streamer_display_name, streamer_avatar, published_at"
+          )
           .eq("vod_source_id", videoId)
           .maybeSingle(),
         supabase
@@ -231,6 +233,25 @@ export function EmbedProvider({ children }: { children: ReactNode }) {
         setBazaarChapters(vodResult.data.bazaar_chapters ?? null);
         if (vodResult.data.duration_seconds && duration === 0) {
           setDuration(vodResult.data.duration_seconds);
+        }
+        // Enrich meta with DB-sourced VOD title if available
+        const dbTitle = vodResult.data.title;
+        if (dbTitle) {
+          setState((prev) => ({
+            ...prev,
+            meta: {
+              streamerName:
+                prev.meta?.streamerName ??
+                vodResult.data!.streamer_display_name ??
+                "",
+              streamerAvatar:
+                prev.meta?.streamerAvatar ??
+                vodResult.data!.streamer_avatar ??
+                "",
+              vodTitle: dbTitle,
+              date: prev.meta?.date ?? vodResult.data!.published_at ?? "",
+            },
+          }));
         }
       }
 

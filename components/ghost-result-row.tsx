@@ -15,6 +15,8 @@ interface GhostResultRowProps {
   isActive: boolean;
   onNavigateToStreamer: (streamerId: number, name: string) => void;
   onNavigateToVod: (vodSourceId: string, title: string) => void;
+  /** Optional override for the row click (used by SearchPanel for route-based navigation). */
+  onRowClick?: () => void;
 }
 
 function formatDate(iso: string): string {
@@ -39,16 +41,20 @@ export function GhostResultRow({
   isActive,
   onNavigateToStreamer,
   onNavigateToVod,
+  onRowClick,
 }: GhostResultRowProps) {
   const { setEmbed } = useEmbed();
 
   const handlePlay = () => {
+    // Load the ghost in the embed player
     setEmbed(ghost.vod_source_id, ghost.frame_time_seconds, {
       streamerName: ghost.streamer_display_name,
       streamerAvatar: ghost.streamer_avatar,
       vodTitle: `Video ${ghost.vod_source_id}`,
       date: formatDate(ghost.actual_timestamp),
     });
+    // If parent provides a route-based click handler, call it too
+    onRowClick?.();
   };
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -484,6 +485,7 @@ export function EmbedPanel() {
     ghosts,
     bazaarChapters,
   } = useEmbed();
+  const pathname = usePathname();
 
   // ---- Derived: current ghost based on playback position ----
   const sortedGhosts = useMemo(
@@ -594,7 +596,7 @@ export function EmbedPanel() {
               <>
                 <Avatar className="size-6 shrink-0">
                   <AvatarImage
-                    src={meta.streamerAvatar}
+                    src={meta.streamerAvatar || undefined}
                     alt={meta.streamerName}
                   />
                   <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
@@ -694,17 +696,31 @@ export function EmbedPanel() {
               </Button>
             )}
 
-            {/* Copy link at timestamp */}
-            {timestamp != null && (
+            {/* Copy shareable link */}
+            {videoId && (
               <Button
                 variant="ghost"
                 size="icon"
                 className="size-7 text-muted-foreground hover:text-foreground"
-                title="Copy Twitch link at timestamp"
+                title="Copy shareable link"
                 onClick={() => {
-                  const t = secondsToTwitchTimestamp(timestamp);
-                  const url = `https://www.twitch.tv/videos/${videoId}?t=${t}`;
-                  navigator.clipboard.writeText(url);
+                  // If we're already on an embed route, copy the clean path (no query params)
+                  const isEmbedRoute = pathname.startsWith("/streamer/");
+                  if (isEmbedRoute) {
+                    const url = `${window.location.origin}${pathname}`;
+                    navigator.clipboard.writeText(url);
+                  } else {
+                    // Fallback: construct from current ghost or Twitch link
+                    const ghost = currentGhost;
+                    if (ghost && meta?.streamerName) {
+                      const url = `${window.location.origin}/streamer/${encodeURIComponent(meta.streamerName)}/vs/${encodeURIComponent(ghost.username)}/${videoId}`;
+                      navigator.clipboard.writeText(url);
+                    } else {
+                      const t = secondsToTwitchTimestamp(timestamp ?? 0);
+                      const url = `https://www.twitch.tv/videos/${videoId}?t=${t}`;
+                      navigator.clipboard.writeText(url);
+                    }
+                  }
                 }}
               >
                 <Copy className="size-3" />
@@ -733,6 +749,18 @@ export function EmbedPanel() {
             )}
           >
             <div className="overflow-hidden">
+              {/* VOD info */}
+              <div className="flex items-center justify-between px-3 pt-2 pb-1 text-xs text-muted-foreground">
+                <span className="truncate">
+                  {meta?.vodTitle ?? `Video ${videoId}`}
+                  {meta?.date && <span className="ml-1.5">{meta.date}</span>}
+                </span>
+                <span className="shrink-0 ml-2 tabular-nums">
+                  {sortedGhosts.length} ghost{sortedGhosts.length !== 1 && "s"}
+                  {" · "}
+                  {formatTimestamp(duration)}
+                </span>
+              </div>
               <div className="px-3 py-3">
                 <EmbedTimeline
                   currentTime={currentTime}
