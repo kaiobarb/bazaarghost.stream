@@ -1,8 +1,7 @@
 import type React from "react";
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 
-import { SpeedInsights } from "@vercel/speed-insights/next";
-import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import Navbar from "@/components/navbar";
 import "./globals.css";
@@ -147,6 +146,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const googleAnalyticsId = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -158,8 +159,20 @@ export default function RootLayout({
             {children}
           </div>
         </ThemeProvider>
-        <Analytics />
-        <SpeedInsights />
+        {googleAnalyticsId ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${googleAnalyticsId}');`}
+            </Script>
+          </>
+        ) : null}
       </body>
     </html>
   );
