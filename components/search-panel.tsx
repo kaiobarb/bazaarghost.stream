@@ -1,12 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  useRouter,
-  useSearchParams,
-  usePathname,
-  useParams,
-} from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Search,
@@ -20,6 +15,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import {
   Popover,
   PopoverContent,
@@ -592,159 +595,150 @@ export default function SearchPanel({
 
   // ---- Render ----
   return (
-    <div className="mx-auto max-w-[1600px] px-4 py-4">
-      {/* Stats line */}
-      <p className="mb-4 text-center font-mono text-xs text-muted-foreground">
-        tracking {stats.streamers} streamers &middot; {stats.vods} vods &middot;{" "}
-        {stats.matchups} matchups
-      </p>
+    <SidebarProvider>
+      <Sidebar variant="inset" collapsible="offcanvas">
+        <SidebarHeader className="gap-3 p-4">
+          <p className="font-mono text-xs text-muted-foreground">
+            tracking {stats.streamers} streamers &middot; {stats.vods} vods
+            &middot; {stats.matchups} matchups
+          </p>
 
-      {/* Search bar + mode tabs */}
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center">
-        {/* Streamer filter popover (ghost + vod modes only) */}
-        {searchMode !== "streamers" && (
-          <Popover
-            open={openStreamerPopover}
-            onOpenChange={setOpenStreamerPopover}
-          >
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                className="h-12 w-full justify-between border-border bg-card sm:w-[180px]"
+          <div className="flex flex-col gap-2">
+            {searchMode !== "streamers" && (
+              <Popover
+                open={openStreamerPopover}
+                onOpenChange={setOpenStreamerPopover}
               >
-                {resolvedStreamer ? (
-                  <div className="flex items-center gap-2">
-                    <Avatar className="size-6">
-                      <AvatarImage
-                        src={resolvedStreamer.avatar || undefined}
-                        alt={resolvedStreamer.displayName}
-                      />
-                      <AvatarFallback className="text-[8px] bg-primary text-primary-foreground">
-                        {resolvedStreamer.displayName[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate">
-                      {resolvedStreamer.displayName}
-                    </span>
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">Any streamer</span>
-                )}
-                <ChevronsUpDown className="ml-1 size-3.5 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[220px] p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Search streamers..." />
-                <CommandList>
-                  <CommandEmpty>No streamer found.</CommandEmpty>
-                  <CommandGroup>
-                    <CommandItem
-                      onSelect={() => handleSelectStreamer(null)}
-                      className="gap-2"
-                    >
-                      <Check
-                        className={cn(
-                          "size-3",
-                          !effectiveStreamer ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      Any streamer
-                    </CommandItem>
-                    {streamerOptions.map((s) => (
-                      <CommandItem
-                        key={s.streamer_id}
-                        value={s.streamer_display_name ?? ""}
-                        onSelect={() => handleSelectStreamer(s)}
-                        className="gap-2"
-                      >
-                        <Check
-                          className={cn(
-                            "size-3",
-                            resolvedStreamer?.id === s.streamer_id
-                              ? "opacity-100"
-                              : "opacity-0"
-                          )}
-                        />
-                        <Avatar className="size-5">
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="h-12 w-full justify-between border-border bg-card"
+                  >
+                    {resolvedStreamer ? (
+                      <div className="flex items-center gap-2">
+                        <Avatar className="size-6">
                           <AvatarImage
-                            src={s.streamer_avatar ?? undefined}
-                            alt={s.streamer_display_name ?? ""}
+                            src={resolvedStreamer.avatar || undefined}
+                            alt={resolvedStreamer.displayName}
                           />
-                          <AvatarFallback className="text-[8px]">
-                            {(s.streamer_display_name ?? "?")[0]?.toUpperCase()}
+                          <AvatarFallback className="bg-primary text-[8px] text-primary-foreground">
+                            {resolvedStreamer.displayName[0]?.toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="truncate text-sm">
-                          {s.streamer_display_name}
+                        <span className="truncate">
+                          {resolvedStreamer.displayName}
                         </span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        Any streamer
+                      </span>
+                    )}
+                    <ChevronsUpDown className="ml-1 size-3.5 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[280px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search streamers..." />
+                    <CommandList>
+                      <CommandEmpty>No streamer found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          onSelect={() => handleSelectStreamer(null)}
+                          className="gap-2"
+                        >
+                          <Check
+                            className={cn(
+                              "size-3",
+                              !effectiveStreamer ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          Any streamer
+                        </CommandItem>
+                        {streamerOptions.map((s) => (
+                          <CommandItem
+                            key={s.streamer_id}
+                            value={s.streamer_display_name ?? ""}
+                            onSelect={() => handleSelectStreamer(s)}
+                            className="gap-2"
+                          >
+                            <Check
+                              className={cn(
+                                "size-3",
+                                resolvedStreamer?.id === s.streamer_id
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            <Avatar className="size-5">
+                              <AvatarImage
+                                src={s.streamer_avatar ?? undefined}
+                                alt={s.streamer_display_name ?? ""}
+                              />
+                              <AvatarFallback className="text-[8px]">
+                                {(s.streamer_display_name ??
+                                  "?")[0]?.toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate text-sm">
+                              {s.streamer_display_name}
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            )}
 
-        {searchMode !== "streamers" && (
-          <span className="hidden text-sm text-muted-foreground sm:inline">
-            vs
-          </span>
-        )}
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder={
+                  searchMode === "ghosts"
+                    ? "Search for a ghost username..."
+                    : searchMode === "streamers"
+                      ? "Search streamers..."
+                      : "Search VODs..."
+                }
+                value={inputValue}
+                onChange={(e) => handleInputChange(e.target.value)}
+                className="h-12 border-border bg-card pl-11 text-base placeholder:text-muted-foreground focus-visible:ring-primary"
+              />
+              {isLoading && (
+                <Loader2 className="absolute right-4 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+              )}
+            </div>
 
-        {/* Search input */}
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={
-              searchMode === "ghosts"
-                ? "Search for a ghost username..."
-                : searchMode === "streamers"
-                  ? "Search streamers..."
-                  : "Search VODs..."
-            }
-            value={inputValue}
-            onChange={(e) => handleInputChange(e.target.value)}
-            className="h-12 pl-11 text-base border-border bg-card placeholder:text-muted-foreground focus-visible:ring-primary"
-          />
-          {isLoading && (
-            <Loader2 className="absolute right-4 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-          )}
-        </div>
+            <div className="flex flex-wrap items-center gap-1">
+              {modeOptions.map((opt) => {
+                const Icon = opt.icon;
+                const isActive = searchMode === opt.value;
+                return (
+                  <Link
+                    key={opt.value}
+                    href={buildModeHref(opt.href)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition-colors",
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                    )}
+                  >
+                    <Icon className="size-3.5" />
+                    {opt.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </SidebarHeader>
 
-        {/* Mode tabs as links */}
-        <div className="flex items-center gap-1">
-          {modeOptions.map((opt) => {
-            const Icon = opt.icon;
-            const isActive = searchMode === opt.value;
-            return (
-              <Link
-                key={opt.value}
-                href={buildModeHref(opt.href)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition-colors",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                )}
-              >
-                <Icon className="size-3.5" />
-                {opt.label}
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Split panel: results + embed */}
-      <div className="flex flex-col gap-4 lg:flex-row">
-        {/* Results panel */}
-        <div className={cn("min-w-0", embedVisible ? "lg:w-[45%]" : "w-full")}>
-          {/* Breadcrumbs */}
+        <SidebarContent className="space-y-3 p-4">
           {breadcrumbs.length > 1 && (
-            <nav className="mb-3 flex items-center gap-1 text-xs text-muted-foreground">
+            <nav className="flex items-center gap-1 text-xs text-muted-foreground">
               {breadcrumbs.map((seg, i) => {
                 const isLast = i === breadcrumbs.length - 1;
                 return (
@@ -759,7 +753,7 @@ export default function SearchPanel({
                     ) : (
                       <Link
                         href={seg.href}
-                        className="hover:text-foreground transition-colors"
+                        className="transition-colors hover:text-foreground"
                       >
                         {seg.label}
                       </Link>
@@ -770,7 +764,6 @@ export default function SearchPanel({
             </nav>
           )}
 
-          {/* Ghost results */}
           {searchMode === "ghosts" && (
             <>
               {!isLoading && ghostResults.length > 0 && (
@@ -814,7 +807,6 @@ export default function SearchPanel({
             </>
           )}
 
-          {/* VOD results */}
           {searchMode === "vods" && (
             <>
               {!isLoading && vodResults.length > 0 && (
@@ -855,7 +847,6 @@ export default function SearchPanel({
             </>
           )}
 
-          {/* Streamer results */}
           {searchMode === "streamers" && (
             <>
               {filteredStreamers.length > 0 ? (
@@ -878,21 +869,38 @@ export default function SearchPanel({
             </>
           )}
 
-          {/* Loading */}
           {isLoading && (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
           )}
-        </div>
+        </SidebarContent>
+      </Sidebar>
 
-        {/* Embed panel (sticky on desktop) */}
-        {embedVisible && (
-          <div className="order-first lg:order-last lg:sticky lg:top-4 lg:w-[55%] lg:self-start">
-            <EmbedPanel />
+      <SidebarInset>
+        <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-4 py-4 lg:px-6">
+          <div className="mb-4 flex items-center gap-2">
+            <SidebarTrigger className="text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">
+              Search &amp; filters
+            </span>
           </div>
-        )}
-      </div>
-    </div>
+
+          <div className="flex-1">
+            {embedVisible ? (
+              <div className="mx-auto w-full max-w-5xl">
+                <EmbedPanel />
+              </div>
+            ) : (
+              <div className="flex min-h-[60vh] items-center justify-center rounded-lg border border-dashed border-border bg-card/30 px-6">
+                <p className="text-center text-sm text-muted-foreground">
+                  Select a result to load a VOD embed.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
