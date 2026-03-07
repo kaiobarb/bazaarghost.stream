@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import Link from "next/link";
 import {
   Search,
   Loader2,
@@ -20,6 +19,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Popover,
   PopoverContent,
@@ -585,6 +585,32 @@ export default function SearchPanel({
       </p>
 
       <div className="@container flex flex-col gap-2">
+        {/* Mode tabs */}
+        <Tabs
+          value={searchMode}
+          onValueChange={(v: string) => {
+            const opt = modeOptions.find((o) => o.value === v);
+            if (opt) router.push(buildModeHref(opt.href));
+          }}
+        >
+          <TabsList className="w-full" variant="line">
+            {modeOptions.map((opt) => {
+              const Icon = opt.icon;
+              return (
+                <TabsTrigger
+                  key={opt.value}
+                  value={opt.value}
+                  className="after:bg-accent data-[state=active]:text-accent dark:data-[state=active]:text-accent"
+                >
+                  <Icon className="size-3.5" />
+                  {opt.label}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </Tabs>
+
+        {/* Search inputs — vary by mode */}
         {searchMode === "ghosts" ? (
           /* Ghost mode: stacked when narrow, inline when wide */
           <div className="flex flex-col items-stretch gap-2 @[20rem]:flex-row @[20rem]:items-center">
@@ -809,28 +835,6 @@ export default function SearchPanel({
             )}
           </div>
         )}
-
-        <div className="flex flex-wrap items-center gap-1">
-          {modeOptions.map((opt) => {
-            const Icon = opt.icon;
-            const isActive = searchMode === opt.value;
-            return (
-              <Link
-                key={opt.value}
-                href={buildModeHref(opt.href)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition-colors",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                )}
-              >
-                <Icon className="size-3.5" />
-                {opt.label}
-              </Link>
-            );
-          })}
-        </div>
       </div>
     </div>
   );
