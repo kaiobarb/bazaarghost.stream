@@ -16,11 +16,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Sidebar,
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import {
   Popover,
   PopoverContent,
@@ -585,10 +584,10 @@ export default function SearchPanel({
         {stats.matchups} matchups
       </p>
 
-      <div className="flex flex-col gap-2">
+      <div className="@container flex flex-col gap-2">
         {searchMode === "ghosts" ? (
-          /* Ghost mode: [Streamer ▾] vs [🔍 ghost name] on one row */
-          <div className="flex items-center gap-2">
+          /* Ghost mode: stacked when narrow, inline when wide */
+          <div className="flex flex-col items-stretch gap-2 @[20rem]:flex-row @[20rem]:items-center">
             <Popover
               open={openStreamerPopover}
               onOpenChange={setOpenStreamerPopover}
@@ -597,7 +596,7 @@ export default function SearchPanel({
                 <Button
                   variant="outline"
                   role="combobox"
-                  className="h-10 shrink-0 justify-between border-border bg-card px-3"
+                  className="h-10 w-full justify-between border-border bg-card px-3 @[20rem]:w-auto @[20rem]:shrink-0"
                 >
                   {resolvedStreamer ? (
                     <div className="flex items-center gap-1.5">
@@ -676,7 +675,7 @@ export default function SearchPanel({
               </PopoverContent>
             </Popover>
 
-            <span className="shrink-0 text-xs font-medium text-muted-foreground">
+            <span className="shrink-0 self-center text-xs font-medium text-muted-foreground">
               vs
             </span>
 
@@ -962,23 +961,28 @@ export default function SearchPanel({
     );
   }
 
-  // ---- Desktop: sidebar + inset ----
+  // ---- Desktop: resizable sidebar + main ----
   return (
-    <SidebarProvider>
-      <Sidebar variant="inset" collapsible="offcanvas">
+    <ResizablePanelGroup
+      orientation="horizontal"
+      className="min-h-[calc(100svh-3.5rem)] w-full"
+    >
+      {/* Search panel */}
+      <ResizablePanel
+        defaultSize="30%"
+        minSize="20%"
+        maxSize="50%"
+        className="flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
+      >
         {searchHeader}
         <div className="min-h-0 flex-1 overflow-y-auto">{searchResults}</div>
-      </Sidebar>
+      </ResizablePanel>
 
-      <SidebarInset>
+      <ResizableHandle withHandle />
+
+      {/* Embed / main content */}
+      <ResizablePanel defaultSize="70%" minSize="40%" className="bg-background">
         <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-4 py-4 lg:px-6">
-          <div className="mb-4 flex items-center gap-2">
-            <SidebarTrigger className="text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">
-              Search &amp; filters
-            </span>
-          </div>
-
           <div className="flex-1">
             <div className="mx-auto w-full max-w-5xl">
               <EmbedPanel />
@@ -992,7 +996,7 @@ export default function SearchPanel({
             )}
           </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }

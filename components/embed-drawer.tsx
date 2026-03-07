@@ -93,23 +93,32 @@ export function EmbedDrawer({ headerHeight = 0 }: EmbedDrawerProps) {
         <button
           type="button"
           onClick={handleReopen}
-          className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-border bg-card px-4 py-3 text-left md:hidden"
+          className="fixed inset-x-0 bottom-0 z-40 flex cursor-pointer items-center gap-3 border-t border-border bg-card px-4 py-3 text-left md:hidden"
         >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 shrink-0 text-muted-foreground"
+          <span
+            role="button"
+            aria-pressed={!isPaused}
+            aria-label={isPaused ? "Play" : "Pause"}
+            tabIndex={0}
             onClick={(e) => {
               e.stopPropagation();
               togglePlay();
             }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                togglePlay();
+              }
+            }}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
           >
             {isPaused ? (
               <Play className="size-4" />
             ) : (
               <Pause className="size-4" />
             )}
-          </Button>
+          </span>
           {meta?.streamerAvatar && (
             <Avatar className="size-7 shrink-0">
               <AvatarImage src={meta.streamerAvatar} alt={meta.streamerName} />
