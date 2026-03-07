@@ -560,118 +560,256 @@ export default function SearchPanel({
   // ---- Shared UI fragments ----
   const isMobile = useIsMobile();
 
+  // Measure search header height so the mobile sheet stops just below it
+  const searchHeaderRef = useRef<HTMLDivElement>(null);
+  const [searchHeaderHeight, setSearchHeaderHeight] = useState(0);
+
+  useEffect(() => {
+    const el = searchHeaderRef.current;
+    if (!el) return;
+    const measure = () =>
+      setSearchHeaderHeight(el.getBoundingClientRect().height);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isMobile]);
+
   const searchHeader = (
-    <div className="flex flex-col gap-3 border-b border-sidebar-border p-4">
+    <div
+      ref={searchHeaderRef}
+      className="relative z-50 flex flex-col gap-3 border-b border-sidebar-border bg-background p-4"
+    >
       <p className="font-mono text-xs text-muted-foreground">
         tracking {stats.streamers} streamers &middot; {stats.vods} vods &middot;{" "}
         {stats.matchups} matchups
       </p>
 
       <div className="flex flex-col gap-2">
-        {searchMode !== "streamers" && (
-          <Popover
-            open={openStreamerPopover}
-            onOpenChange={setOpenStreamerPopover}
-          >
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                className="h-12 w-full justify-between border-border bg-card"
-              >
-                {resolvedStreamer ? (
-                  <div className="flex items-center gap-2">
-                    <Avatar className="size-6">
-                      <AvatarImage
-                        src={resolvedStreamer.avatar || undefined}
-                        alt={resolvedStreamer.displayName}
-                      />
-                      <AvatarFallback className="bg-primary text-[8px] text-primary-foreground">
-                        {resolvedStreamer.displayName[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate">
-                      {resolvedStreamer.displayName}
+        {searchMode === "ghosts" ? (
+          /* Ghost mode: [Streamer ▾] vs [🔍 ghost name] on one row */
+          <div className="flex items-center gap-2">
+            <Popover
+              open={openStreamerPopover}
+              onOpenChange={setOpenStreamerPopover}
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="h-10 shrink-0 justify-between border-border bg-card px-3"
+                >
+                  {resolvedStreamer ? (
+                    <div className="flex items-center gap-1.5">
+                      <Avatar className="size-5">
+                        <AvatarImage
+                          src={resolvedStreamer.avatar || undefined}
+                          alt={resolvedStreamer.displayName}
+                        />
+                        <AvatarFallback className="bg-primary text-[7px] text-primary-foreground">
+                          {resolvedStreamer.displayName[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="max-w-[8rem] truncate text-sm">
+                        {resolvedStreamer.displayName}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">
+                      Streamer
                     </span>
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">Any streamer</span>
-                )}
-                <ChevronsUpDown className="ml-1 size-3.5 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[280px] p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Search streamers..." />
-                <CommandList>
-                  <CommandEmpty>No streamer found.</CommandEmpty>
-                  <CommandGroup>
-                    <CommandItem
-                      onSelect={() => handleSelectStreamer(null)}
-                      className="gap-2"
-                    >
-                      <Check
-                        className={cn(
-                          "size-3",
-                          !effectiveStreamer ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      Any streamer
-                    </CommandItem>
-                    {streamerOptions.map((s) => (
+                  )}
+                  <ChevronsUpDown className="ml-1 size-3 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[280px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search streamers..." />
+                  <CommandList>
+                    <CommandEmpty>No streamer found.</CommandEmpty>
+                    <CommandGroup>
                       <CommandItem
-                        key={s.streamer_id}
-                        value={s.streamer_display_name ?? ""}
-                        onSelect={() => handleSelectStreamer(s)}
+                        onSelect={() => handleSelectStreamer(null)}
                         className="gap-2"
                       >
                         <Check
                           className={cn(
                             "size-3",
-                            resolvedStreamer?.id === s.streamer_id
-                              ? "opacity-100"
-                              : "opacity-0"
+                            !effectiveStreamer ? "opacity-100" : "opacity-0"
                           )}
                         />
-                        <Avatar className="size-5">
-                          <AvatarImage
-                            src={s.streamer_avatar ?? undefined}
-                            alt={s.streamer_display_name ?? ""}
-                          />
-                          <AvatarFallback className="text-[8px]">
-                            {(s.streamer_display_name ?? "?")[0]?.toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="truncate text-sm">
-                          {s.streamer_display_name}
-                        </span>
+                        Any streamer
                       </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        )}
+                      {streamerOptions.map((s) => (
+                        <CommandItem
+                          key={s.streamer_id}
+                          value={s.streamer_display_name ?? ""}
+                          onSelect={() => handleSelectStreamer(s)}
+                          className="gap-2"
+                        >
+                          <Check
+                            className={cn(
+                              "size-3",
+                              resolvedStreamer?.id === s.streamer_id
+                                ? "opacity-100"
+                                : "opacity-0"
+                            )}
+                          />
+                          <Avatar className="size-5">
+                            <AvatarImage
+                              src={s.streamer_avatar ?? undefined}
+                              alt={s.streamer_display_name ?? ""}
+                            />
+                            <AvatarFallback className="text-[8px]">
+                              {(s.streamer_display_name ??
+                                "?")[0]?.toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate text-sm">
+                            {s.streamer_display_name}
+                          </span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
 
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={
-              searchMode === "ghosts"
-                ? "Search for a ghost username..."
-                : searchMode === "streamers"
-                  ? "Search streamers..."
-                  : "Search VODs..."
-            }
-            value={inputValue}
-            onChange={(e) => handleInputChange(e.target.value)}
-            className="h-12 border-border bg-card pl-11 text-base placeholder:text-muted-foreground focus-visible:ring-primary"
-          />
-          {isLoading && (
-            <Loader2 className="absolute right-4 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-          )}
-        </div>
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">
+              vs
+            </span>
+
+            <div className="relative min-w-0 flex-1">
+              <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Ghost username..."
+                value={inputValue}
+                onChange={(e) => handleInputChange(e.target.value)}
+                className="h-10 border-border bg-card pl-9 text-sm placeholder:text-muted-foreground focus-visible:ring-primary"
+              />
+              {isLoading && (
+                <Loader2 className="absolute right-3 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
+              )}
+            </div>
+          </div>
+        ) : searchMode === "vods" ? (
+          /* VOD mode: streamer dropdown + search stacked */
+          <>
+            <Popover
+              open={openStreamerPopover}
+              onOpenChange={setOpenStreamerPopover}
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="h-10 w-full justify-between border-border bg-card"
+                >
+                  {resolvedStreamer ? (
+                    <div className="flex items-center gap-2">
+                      <Avatar className="size-5">
+                        <AvatarImage
+                          src={resolvedStreamer.avatar || undefined}
+                          alt={resolvedStreamer.displayName}
+                        />
+                        <AvatarFallback className="bg-primary text-[7px] text-primary-foreground">
+                          {resolvedStreamer.displayName[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate text-sm">
+                        {resolvedStreamer.displayName}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">
+                      Any streamer
+                    </span>
+                  )}
+                  <ChevronsUpDown className="ml-1 size-3 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[280px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search streamers..." />
+                  <CommandList>
+                    <CommandEmpty>No streamer found.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        onSelect={() => handleSelectStreamer(null)}
+                        className="gap-2"
+                      >
+                        <Check
+                          className={cn(
+                            "size-3",
+                            !effectiveStreamer ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        Any streamer
+                      </CommandItem>
+                      {streamerOptions.map((s) => (
+                        <CommandItem
+                          key={s.streamer_id}
+                          value={s.streamer_display_name ?? ""}
+                          onSelect={() => handleSelectStreamer(s)}
+                          className="gap-2"
+                        >
+                          <Check
+                            className={cn(
+                              "size-3",
+                              resolvedStreamer?.id === s.streamer_id
+                                ? "opacity-100"
+                                : "opacity-0"
+                            )}
+                          />
+                          <Avatar className="size-5">
+                            <AvatarImage
+                              src={s.streamer_avatar ?? undefined}
+                              alt={s.streamer_display_name ?? ""}
+                            />
+                            <AvatarFallback className="text-[8px]">
+                              {(s.streamer_display_name ??
+                                "?")[0]?.toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate text-sm">
+                            {s.streamer_display_name}
+                          </span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search VODs..."
+                value={inputValue}
+                onChange={(e) => handleInputChange(e.target.value)}
+                className="h-10 border-border bg-card pl-9 text-sm placeholder:text-muted-foreground focus-visible:ring-primary"
+              />
+              {isLoading && (
+                <Loader2 className="absolute right-3 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
+              )}
+            </div>
+          </>
+        ) : (
+          /* Streamers mode: just the search input */
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search streamers..."
+              value={inputValue}
+              onChange={(e) => handleInputChange(e.target.value)}
+              className="h-10 border-border bg-card pl-9 text-sm placeholder:text-muted-foreground focus-visible:ring-primary"
+            />
+            {isLoading && (
+              <Loader2 className="absolute right-3 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
+            )}
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-1">
           {modeOptions.map((opt) => {
@@ -819,7 +957,7 @@ export default function SearchPanel({
       <div className="flex min-h-[calc(100svh-3.5rem)] w-full flex-col bg-background">
         {searchHeader}
         <div className="flex-1 pb-16">{searchResults}</div>
-        <EmbedDrawer />
+        <EmbedDrawer headerHeight={searchHeaderHeight} />
       </div>
     );
   }

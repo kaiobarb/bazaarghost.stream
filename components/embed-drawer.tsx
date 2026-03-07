@@ -15,15 +15,16 @@ import { cn } from "@/lib/utils";
  * never inside a portal — so the player is never destroyed on open/close.
  * Visibility is controlled purely with CSS transforms.
  *
- * State model:
- *  - `isVisible` (embed context) = embed has content the user hasn't dismissed.
- *  - `sheetOpen` (local) = whether the sheet is slid up.
- *
- * Swiping / tapping close pauses the video and slides the sheet down.
- * The persistent bottom bar lets the user reopen.
- * The X button inside EmbedPanel calls `hideEmbed()`, which fully dismisses.
+ * `headerHeight` is the measured height of the search header so the sheet
+ * stops just below it, keeping the search bar interactive while watching.
  */
-export function EmbedDrawer() {
+
+interface EmbedDrawerProps {
+  /** Pixel height of the search header bar. The sheet will not cover it. */
+  headerHeight?: number;
+}
+
+export function EmbedDrawer({ headerHeight = 0 }: EmbedDrawerProps) {
   const {
     isVisible,
     videoId,
@@ -137,26 +138,29 @@ export function EmbedDrawer() {
         </button>
       )}
 
-      {/* Scrim overlay */}
+      {/* Scrim overlay — starts below the search header so it stays interactive */}
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
         className={cn(
-          "fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 md:hidden",
+          "fixed inset-x-0 bottom-0 z-40 bg-black/50 transition-opacity duration-300 md:hidden",
           sheetOpen
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0"
         )}
+        style={{ top: headerHeight }}
         onClick={handleClose}
       />
 
-      {/* Bottom sheet — always mounted, slides via transform */}
+      {/* Bottom sheet — slides up to just below the search header */}
       <div
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 flex max-h-[85svh] flex-col rounded-t-2xl border-t border-border bg-card transition-transform duration-300 ease-out md:hidden",
+          "fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl border-t border-border bg-card transition-transform duration-300 ease-out md:hidden",
           sheetOpen ? "translate-y-0" : "translate-y-full"
         )}
+        style={{ maxHeight: `calc(100svh - ${headerHeight}px)` }}
       >
         {/* Drag handle */}
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
         <div className="flex w-full justify-center py-2" onClick={handleClose}>
           <div className="h-1.5 w-10 rounded-full bg-muted" />
         </div>
