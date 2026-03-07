@@ -557,42 +557,6 @@ export default function SearchPanel({
     [queryParam]
   );
 
-  // ---- Breadcrumb segments derived from URL ----
-  const breadcrumbs = useMemo(() => {
-    const segments: { label: string; href: string }[] = [];
-
-    if (searchMode === "ghosts") {
-      segments.push({ label: "Ghosts", href: "/search" });
-    } else if (searchMode === "streamers") {
-      segments.push({ label: "Streamers", href: "/streamers" });
-    } else if (searchMode === "vods") {
-      segments.push({ label: "VODs", href: "/vods" });
-    }
-
-    if (routeContext.pathStreamer) {
-      segments.push({
-        label: routeContext.pathStreamer,
-        href: `/streamer/${encodeURIComponent(routeContext.pathStreamer)}`,
-      });
-    }
-
-    if (routeContext.pathVodId && !routeContext.pathUsername) {
-      segments.push({
-        label: `VOD ${routeContext.pathVodId}`,
-        href: `/streamer/${encodeURIComponent(routeContext.pathStreamer ?? "")}/${routeContext.pathVodId}`,
-      });
-    }
-
-    if (routeContext.pathUsername && routeContext.pathVodId) {
-      segments.push({
-        label: routeContext.pathUsername,
-        href: `/streamer/${encodeURIComponent(routeContext.pathStreamer ?? "")}/vs/${encodeURIComponent(routeContext.pathUsername)}/${routeContext.pathVodId}`,
-      });
-    }
-
-    return segments;
-  }, [searchMode, routeContext]);
-
   // ---- Shared UI fragments ----
   const isMobile = useIsMobile();
 
@@ -736,33 +700,6 @@ export default function SearchPanel({
 
   const searchResults = (
     <div className="space-y-3 p-4">
-      {breadcrumbs.length > 1 && (
-        <nav className="flex items-center gap-1 text-xs text-muted-foreground">
-          {breadcrumbs.map((seg, i) => {
-            const isLast = i === breadcrumbs.length - 1;
-            return (
-              <span key={i} className="flex items-center gap-1">
-                {i > 0 && (
-                  <span className="mx-0.5 text-muted-foreground/50">/</span>
-                )}
-                {isLast ? (
-                  <span className="font-medium text-foreground">
-                    {seg.label}
-                  </span>
-                ) : (
-                  <Link
-                    href={seg.href}
-                    className="transition-colors hover:text-foreground"
-                  >
-                    {seg.label}
-                  </Link>
-                )}
-              </span>
-            );
-          })}
-        </nav>
-      )}
-
       {searchMode === "ghosts" && (
         <>
           {!isLoading && ghostResults.length > 0 && (
