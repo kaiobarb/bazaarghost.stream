@@ -5,25 +5,14 @@ import { PanelLeftIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 
 const SIDEBAR_WIDTH = "38rem";
-const SIDEBAR_WIDTH_MOBILE = "24rem";
 const SIDEBAR_WIDTH_ICON = "0rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
-const MOBILE_PEEK_SNAP = 0.25;
-const MOBILE_OPEN_SNAP = 0.9;
 
 type SidebarContextProps = {
   open: boolean;
   setOpen: (open: boolean) => void;
-  openMobile: boolean;
-  setOpenMobile: (open: boolean) => void;
   isMobile: boolean;
   state: "expanded" | "collapsed";
   toggleSidebar: () => void;
@@ -53,7 +42,6 @@ export function SidebarProvider({
   onOpenChange?: (open: boolean) => void;
 }) {
   const isMobile = useIsMobile();
-  const [openMobile, setOpenMobile] = React.useState(true);
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
 
   const open = openProp ?? uncontrolledOpen;
@@ -69,11 +57,8 @@ export function SidebarProvider({
   );
 
   const toggleSidebar = React.useCallback(() => {
-    setOpenMobile(!openMobile);
-    if (!isMobile) {
-      setOpen(!open);
-    }
-  }, [isMobile, open, openMobile, setOpen]);
+    setOpen(!open);
+  }, [open, setOpen]);
 
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -94,13 +79,11 @@ export function SidebarProvider({
     () => ({
       open,
       setOpen,
-      openMobile,
-      setOpenMobile,
       isMobile,
       state: open ? "expanded" : "collapsed",
       toggleSidebar,
     }),
-    [open, setOpen, openMobile, isMobile, toggleSidebar]
+    [open, setOpen, isMobile, toggleSidebar]
   );
 
   return (
@@ -110,13 +93,12 @@ export function SidebarProvider({
         style={
           {
             "--sidebar-width": SIDEBAR_WIDTH,
-            "--sidebar-width-mobile": SIDEBAR_WIDTH_MOBILE,
             "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
             ...style,
           } as React.CSSProperties
         }
         className={cn(
-          "group/sidebar-wrapper flex min-h-[calc(100svh-3.5rem)] w-full has-data-[variant=inset]:bg-sidebar",
+          "group/sidebar-wrapper hidden min-h-[calc(100svh-3.5rem)] w-full has-data-[variant=inset]:bg-sidebar md:flex",
           className
         )}
         {...props}
@@ -139,17 +121,7 @@ export function Sidebar({
   variant?: "sidebar" | "inset";
   collapsible?: "offcanvas" | "none";
 }) {
-  const { state, openMobile, setOpenMobile } = useSidebar();
-  const [activeSnapPoint, setActiveSnapPoint] = React.useState<
-    number | string | null
-  >(MOBILE_PEEK_SNAP);
-
-  const handleMobileOpenChange = React.useCallback(
-    (nextOpen: boolean) => {
-      setOpenMobile(nextOpen);
-    },
-    [setOpenMobile]
-  );
+  const { state } = useSidebar();
 
   if (collapsible === "none") {
     return (
@@ -167,52 +139,30 @@ export function Sidebar({
   }
 
   return (
-    <>
-      <Drawer
-        open={openMobile}
-        onOpenChange={handleMobileOpenChange}
-        direction="bottom"
-        modal={false}
-        dismissible={false}
-        snapPoints={[MOBILE_PEEK_SNAP, MOBILE_OPEN_SNAP]}
-        activeSnapPoint={activeSnapPoint}
-        setActiveSnapPoint={setActiveSnapPoint}
-        fadeFromIndex={1}
-      >
-        <DrawerContent className="h-[90svh] max-h-[90svh] rounded-t-2xl border-t border-sidebar-border bg-sidebar p-0 text-sidebar-foreground md:hidden">
-          <DrawerTitle className="sr-only">Search Sidebar</DrawerTitle>
-          <DrawerDescription className="sr-only">
-            Search filters and results panel.
-          </DrawerDescription>
-          <div className="flex h-full w-full flex-col">{children}</div>
-        </DrawerContent>
-      </Drawer>
-
-      <aside
-        data-slot="sidebar"
-        data-state={state}
-        data-side={side}
-        data-variant={variant}
+    <aside
+      data-slot="sidebar"
+      data-state={state}
+      data-side={side}
+      data-variant={variant}
+      className={cn(
+        "peer min-h-[calc(100svh-3.5rem)] border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-linear",
+        "w-(--sidebar-width) data-[state=collapsed]:w-(--sidebar-width-icon)",
+        variant === "inset" && "p-2",
+        className
+      )}
+      {...props}
+    >
+      <div
         className={cn(
-          "peer hidden min-h-[calc(100svh-3.5rem)] border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-linear md:flex",
-          "w-(--sidebar-width) data-[state=collapsed]:w-(--sidebar-width-icon)",
-          variant === "inset" && "p-2",
-          className
+          "flex h-full w-full min-h-0 flex-col overflow-hidden",
+          "data-[state=collapsed]:pointer-events-none",
+          variant === "inset" && "rounded-xl border border-sidebar-border"
         )}
-        {...props}
+        data-state={state}
       >
-        <div
-          className={cn(
-            "flex h-full w-full min-h-0 flex-col overflow-hidden",
-            "data-[state=collapsed]:pointer-events-none",
-            variant === "inset" && "rounded-xl border border-sidebar-border"
-          )}
-          data-state={state}
-        >
-          {state === "expanded" ? children : null}
-        </div>
-      </aside>
-    </>
+        {state === "expanded" ? children : null}
+      </div>
+    </aside>
   );
 }
 

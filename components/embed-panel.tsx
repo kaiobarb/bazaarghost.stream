@@ -558,11 +558,16 @@ export function EmbedPanel() {
   // ---- Timeline toggle ----
   const [timelineOpen, setTimelineOpen] = useState(false);
 
-  if (!isVisible || !videoId) return null;
+  const showChrome = isVisible && !!videoId;
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
-      {/* Player area */}
+    <div
+      className={cn(
+        "flex flex-col overflow-hidden rounded-lg border border-border bg-card",
+        !showChrome && "invisible h-0 overflow-hidden"
+      )}
+    >
+      {/* Player area — always mounted so the Twitch iframe is never destroyed */}
       <div className="relative aspect-video w-full overflow-hidden rounded-t-lg bg-black">
         <div id={containerId} className="size-full" />
         {error && (
