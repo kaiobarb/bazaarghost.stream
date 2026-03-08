@@ -29,7 +29,7 @@ export default function Navbar() {
 
   return (
     <nav className="border-b border-border bg-card font-serif">
-      <div className="mx-auto max-w-6xl px-4 py-4">
+      <div className="mx-auto max-w-6xl px-4 py-1">
         <div className="flex items-center justify-between">
           {/* Logo - clicking returns to home and clears filters */}
           <Link

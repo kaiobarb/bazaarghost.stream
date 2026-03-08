@@ -10,6 +10,7 @@ import {
   Users,
   Check,
   ChevronsUpDown,
+  X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -139,13 +140,7 @@ const modeOptions: {
 // Component
 // ---------------------------------------------------------------------------
 
-interface SearchPanelProps {
-  initialStats?: { streamers: number; vods: number; matchups: number };
-}
-
-export default function SearchPanel({
-  initialStats = { streamers: 0, vods: 0, matchups: 0 },
-}: SearchPanelProps) {
+export default function SearchPanel() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -187,9 +182,6 @@ export default function SearchPanel({
 
   const searchTimer = useRef<NodeJS.Timeout | null>(null);
   const prevSearchKey = useRef<string>("");
-
-  // Stats
-  const [stats] = useState(initialStats);
 
   // ---- Sync input value when URL changes (e.g. back/forward) ----
   useEffect(() => {
@@ -636,13 +628,8 @@ export default function SearchPanel({
   const searchHeader = (
     <div
       ref={searchHeaderRef}
-      className="relative z-50 flex flex-col gap-3 border-b border-sidebar-border bg-background p-4"
+      className="relative z-50 flex flex-col gap-3 bg-background p-4"
     >
-      <p className="font-mono text-xs text-muted-foreground">
-        tracking {stats.streamers} streamers &middot; {stats.vods} vods &middot;{" "}
-        {stats.matchups} matchups
-      </p>
-
       <div className="@container flex flex-col gap-2">
         {/* Mode tabs */}
         <Tabs
@@ -703,7 +690,28 @@ export default function SearchPanel({
                       Streamer
                     </span>
                   )}
-                  <ChevronsUpDown className="ml-1 size-3 shrink-0 opacity-50" />
+                  {resolvedStreamer ? (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="ml-1 shrink-0 rounded-sm p-0.5 opacity-50 hover:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectStreamer(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleSelectStreamer(null);
+                        }
+                      }}
+                    >
+                      <X className="size-3" />
+                    </span>
+                  ) : (
+                    <ChevronsUpDown className="ml-1 size-3 shrink-0 opacity-50" />
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[280px] p-0" align="start">
@@ -810,7 +818,28 @@ export default function SearchPanel({
                       Any streamer
                     </span>
                   )}
-                  <ChevronsUpDown className="ml-1 size-3 shrink-0 opacity-50" />
+                  {resolvedStreamer ? (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="ml-1 shrink-0 rounded-sm p-0.5 opacity-50 hover:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectStreamer(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleSelectStreamer(null);
+                        }
+                      }}
+                    >
+                      <X className="size-3" />
+                    </span>
+                  ) : (
+                    <ChevronsUpDown className="ml-1 size-3 shrink-0 opacity-50" />
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[280px] p-0" align="start">

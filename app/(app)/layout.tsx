@@ -16,10 +16,14 @@ export default async function AppLayout({
     <EmbedProvider>
       <div className="flex h-svh flex-col overflow-hidden">
         <Navbar />
+        <p className="shrink-0 border-b border-sidebar-border py-1 text-center font-mono text-xs text-muted-foreground">
+          tracking {stats.streamers} streamers &middot; {stats.vods} vods
+          &middot; {stats.matchups} matchups
+        </p>
         {/* children renders GhostLoader (null) on embed routes, nothing on search routes */}
         {children}
         <Suspense>
-          <SearchPanel initialStats={stats} />
+          <SearchPanel />
         </Suspense>
       </div>
     </EmbedProvider>

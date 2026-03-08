@@ -91,9 +91,9 @@ export function VirtualizedResultList<T>({
   const totalSize = virtualizer.getTotalSize();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col pt-2">
-      {/* Result count — fixed above scroll area */}
-      <p className="shrink-0 px-4 pb-2 font-mono text-xs text-muted-foreground">
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Result count — inset to look recessed between header border and results */}
+      <p className="shrink-0 border-b border-sidebar-border px-4 py-1 font-mono text-xs text-muted-foreground ">
         {items.length.toLocaleString()}
         {totalCount > items.length
           ? ` / ${totalCount.toLocaleString()}`
@@ -102,7 +102,10 @@ export function VirtualizedResultList<T>({
       </p>
 
       {/* Scrollable virtual list — pr-2 leaves gutter for scrollbar */}
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto pl-4 pr-2">
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-y-auto pl-4 pr-2 pt-2"
+      >
         <div className="relative w-full" style={{ height: `${totalSize}px` }}>
           {virtualItems.map((virtualRow) => {
             const item = items[virtualRow.index];
