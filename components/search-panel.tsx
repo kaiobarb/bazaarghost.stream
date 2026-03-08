@@ -523,23 +523,6 @@ export default function SearchPanel() {
 
   // ---- Navigation handlers ----
 
-  /** Ghost result click → navigate to /streamer/[s]/vs/[username]/[vodId] */
-  const handleGhostClick = useCallback(
-    (ghost: GhostResult) => {
-      // Preserve current search params
-      const params = new URLSearchParams();
-      if (queryParam) params.set("q", queryParam);
-      // Carry forward streamer/vod filters only if they were explicit params
-      if (streamerParam) params.set("streamer", streamerParam);
-      if (vodParam) params.set("vod", vodParam);
-
-      const qs = params.toString();
-      const path = `/streamer/${encodeURIComponent(ghost.streamer_display_name)}/vs/${encodeURIComponent(ghost.username)}/${ghost.vod_source_id}`;
-      router.push(`${path}${qs ? `?${qs}` : ""}`, { scroll: false });
-    },
-    [router, queryParam, streamerParam, vodParam]
-  );
-
   /** Streamer result click → navigate to /streamer/[name] */
   const handleStreamerClick = useCallback(
     (streamerId: number, name: string) => {
@@ -628,7 +611,7 @@ export default function SearchPanel() {
   const searchHeader = (
     <div
       ref={searchHeaderRef}
-      className="relative z-50 flex flex-col gap-3 bg-background p-4"
+      className="relative z-50 flex flex-col gap-3 bg-background p-1"
     >
       <div className="@container flex flex-col gap-2">
         {/* Mode tabs */}
@@ -944,8 +927,6 @@ export default function SearchPanel() {
                     Math.abs(activeTime - ghost.frame_time_seconds) < 5
                   }
                   onNavigateToStreamer={handleNavigateToStreamer}
-                  onNavigateToVod={handleNavigateToVodGhosts}
-                  onRowClick={() => handleGhostClick(ghost)}
                 />
               )}
               onLoadMore={loadMoreGhosts}
@@ -1064,21 +1045,17 @@ export default function SearchPanel() {
       <ResizablePanel
         defaultSize="70%"
         minSize="40%"
-        className="overflow-y-auto bg-background"
+        className="overflow-hidden bg-background"
       >
-        <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-4 py-4 lg:px-6">
-          <div className="flex-1">
-            <div className="mx-auto w-full max-w-5xl">
-              <EmbedPanel />
+        <div className="flex h-full flex-col">
+          <EmbedPanel />
+          {!embedVisible && (
+            <div className="flex flex-1 items-center justify-center border border-dashed border-border bg-card/30 px-6">
+              <p className="text-center text-sm text-muted-foreground">
+                Select a result to load a VOD embed.
+              </p>
             </div>
-            {!embedVisible && (
-              <div className="flex min-h-[60vh] items-center justify-center rounded-lg border border-dashed border-border bg-card/30 px-6">
-                <p className="text-center text-sm text-muted-foreground">
-                  Select a result to load a VOD embed.
-                </p>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </ResizablePanel>
     </ResizablePanelGroup>

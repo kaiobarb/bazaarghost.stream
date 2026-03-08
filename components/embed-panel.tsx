@@ -6,8 +6,6 @@ import Image from "next/image";
 import {
   ArrowLeft,
   ArrowRight,
-  ChevronDown,
-  ChevronUp,
   Copy,
   Pause,
   Play,
@@ -206,7 +204,7 @@ interface EmbedTimelineProps {
   bazaarChapters: number[] | null;
   ghosts: EmbedGhost[];
   currentGhostId: string | null;
-  onSeek: (seconds: number) => void;
+  onSeekGhost: (ghost: EmbedGhost) => void;
 }
 
 function EmbedTimeline({
@@ -215,7 +213,7 @@ function EmbedTimeline({
   bazaarChapters,
   ghosts,
   currentGhostId,
-  onSeek,
+  onSeekGhost,
 }: EmbedTimelineProps) {
   const barRef = useRef<HTMLDivElement>(null);
   const [cursorX, setCursorX] = useState<number | null>(null);
@@ -253,9 +251,9 @@ function EmbedTimeline({
           nearestGhost = ghosts[i];
         }
       }
-      onSeek(nearestGhost.frame_time_seconds);
+      onSeekGhost(nearestGhost);
     },
-    [duration, onSeek, ghosts]
+    [duration, onSeekGhost, ghosts]
   );
 
   const updateCursor = useCallback((clientX: number) => {
@@ -307,10 +305,10 @@ function EmbedTimeline({
           nearestGhost = ghosts[i];
         }
       }
-      onSeek(nearestGhost.frame_time_seconds);
+      onSeekGhost(nearestGhost);
       clearCursor();
     },
-    [duration, ghosts, cursorX, onSeek, clearCursor]
+    [duration, ghosts, cursorX, onSeekGhost, clearCursor]
   );
 
   // Parse bazaar chapter start/end pairs from the flat array
@@ -527,6 +525,14 @@ export function EmbedPanel() {
     );
   }, [sortedGhosts, currentGhost, currentTime]);
 
+  // ---- Seek to a ghost: move player ----
+  const seekToGhost = useCallback(
+    (ghost: EmbedGhost) => {
+      seek(ghost.frame_time_seconds);
+    },
+    [seek]
+  );
+
   // ---- Arrow navigation: prev/next ghost ----
   const navigatePrevGhost = useCallback(() => {
     if (sortedGhosts.length === 0) return;
@@ -535,40 +541,37 @@ export function EmbedPanel() {
     const buffer = 2;
     for (let i = sortedGhosts.length - 1; i >= 0; i--) {
       if (sortedGhosts[i].frame_time_seconds < currentTime - buffer) {
-        seek(sortedGhosts[i].frame_time_seconds);
+        seekToGhost(sortedGhosts[i]);
         return;
       }
     }
     // If nothing before, go to first ghost
-    seek(sortedGhosts[0].frame_time_seconds);
-  }, [sortedGhosts, currentTime, seek]);
+    seekToGhost(sortedGhosts[0]);
+  }, [sortedGhosts, currentTime, seekToGhost]);
 
   const navigateNextGhost = useCallback(() => {
     if (sortedGhosts.length === 0) return;
     for (const g of sortedGhosts) {
       if (g.frame_time_seconds > currentTime + 2) {
-        seek(g.frame_time_seconds);
+        seekToGhost(g);
         return;
       }
     }
     // If nothing after, go to last ghost
-    seek(sortedGhosts[sortedGhosts.length - 1].frame_time_seconds);
-  }, [sortedGhosts, currentTime, seek]);
-
-  // ---- Timeline toggle ----
-  const [timelineOpen, setTimelineOpen] = useState(false);
+    seekToGhost(sortedGhosts[sortedGhosts.length - 1]);
+  }, [sortedGhosts, currentTime, seekToGhost]);
 
   const showChrome = isVisible && !!videoId;
 
   return (
     <div
       className={cn(
-        "flex flex-col overflow-hidden rounded-lg border border-border bg-card",
+        "flex  flex-col overflow-hidden bg-card border-border border rounded-lg m-2",
         !showChrome && "invisible h-0 overflow-hidden"
       )}
     >
       {/* Player area — always mounted so the Twitch iframe is never destroyed */}
-      <div className="relative aspect-video w-full overflow-hidden rounded-t-lg bg-black">
+      <div className="relative aspect-video w-full">
         <div id={containerId} className="size-full" />
         {error && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-sm text-destructive">
@@ -577,22 +580,8 @@ export function EmbedPanel() {
         )}
       </div>
 
-      {/* Controls area — clicking unclaimed space toggles timeline */}
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-      <div
-        onClick={(e) => {
-          // Only toggle if the click wasn't on an interactive element
-          const target = e.target as HTMLElement;
-          if (
-            target.closest(
-              "button, a, [role=button], svg, canvas, [data-timeline]"
-            )
-          )
-            return;
-          if (isReady && duration > 0) setTimelineOpen((o) => !o);
-        }}
-        className="cursor-pointer"
-      >
+      {/* Controls area */}
+      <div>
         {/* Row 1: Meta + current ghost + controls — 3-col grid for true centering */}
         <div className="relative z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-t border-border bg-card px-3 py-2">
           {/* Left: streamer meta */}
@@ -745,50 +734,31 @@ export function EmbedPanel() {
           </div>
         </div>
 
-        {/* Timeline — animated expand/collapse */}
+        {/* Timeline — always visible */}
         {isReady && duration > 0 && (
-          <div
-            className={cn(
-              "grid transition-[grid-template-rows] duration-200 ease-out",
-              timelineOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-            )}
-          >
-            <div className="overflow-hidden">
-              {/* VOD info */}
-              <div className="flex items-center justify-between px-3 pt-2 pb-1 text-xs text-muted-foreground">
-                <span className="truncate">
-                  {meta?.vodTitle ?? `Video ${videoId}`}
-                  {meta?.date && <span className="ml-1.5">{meta.date}</span>}
-                </span>
-                <span className="shrink-0 ml-2 tabular-nums">
-                  {sortedGhosts.length} ghost{sortedGhosts.length !== 1 && "s"}
-                  {" · "}
-                  {formatTimestamp(duration)}
-                </span>
-              </div>
-              <div className="px-3 py-3">
-                <EmbedTimeline
-                  currentTime={currentTime}
-                  duration={duration}
-                  bazaarChapters={bazaarChapters}
-                  ghosts={sortedGhosts}
-                  currentGhostId={currentGhost?.detection_id ?? null}
-                  onSeek={seek}
-                />
-              </div>
+          <>
+            <div className="flex items-center justify-between px-3 pt-2 pb-1 text-xs text-muted-foreground">
+              <span className="truncate">
+                {meta?.vodTitle ?? `Video ${videoId}`}
+                {meta?.date && <span className="ml-1.5">{meta.date}</span>}
+              </span>
+              <span className="shrink-0 ml-2 tabular-nums">
+                {sortedGhosts.length} ghost{sortedGhosts.length !== 1 && "s"}
+                {" · "}
+                {formatTimestamp(duration)}
+              </span>
             </div>
-          </div>
-        )}
-
-        {/* Chevron indicator */}
-        {isReady && duration > 0 && (
-          <div className="flex w-full items-center justify-end px-2 py-0.5 text-muted-foreground">
-            {timelineOpen ? (
-              <ChevronUp className="size-3.5" />
-            ) : (
-              <ChevronDown className="size-3.5" />
-            )}
-          </div>
+            <div className="px-3 py-3">
+              <EmbedTimeline
+                currentTime={currentTime}
+                duration={duration}
+                bazaarChapters={bazaarChapters}
+                ghosts={sortedGhosts}
+                currentGhostId={currentGhost?.detection_id ?? null}
+                onSeekGhost={seekToGhost}
+              />
+            </div>
+          </>
         )}
       </div>
     </div>

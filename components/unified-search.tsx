@@ -664,7 +664,6 @@ export default function UnifiedSearch({
                           Math.abs(activeTime - ghost.frame_time_seconds) < 5
                         }
                         onNavigateToStreamer={navigateToStreamerVods}
-                        onNavigateToVod={navigateToVodGhosts}
                       />
                     ))}
                   </div>
