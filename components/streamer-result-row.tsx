@@ -27,9 +27,9 @@ export function StreamerResultRow({
           streamer.streamer_display_name ?? ""
         )
       }
-      className="flex w-full items-center gap-4 rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/50"
+      className="box-border flex h-[72px] w-full items-center gap-3 rounded-lg border border-border bg-card px-3 text-left transition-colors hover:border-primary/50"
     >
-      <Avatar className="size-10 shrink-0">
+      <Avatar className="size-9 shrink-0">
         <AvatarImage
           src={streamer.streamer_avatar ?? undefined}
           alt={streamer.streamer_display_name ?? ""}
@@ -40,7 +40,7 @@ export function StreamerResultRow({
       </Avatar>
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-card-foreground truncate">
+        <p className="truncate text-sm font-medium text-card-foreground">
           {streamer.streamer_display_name}
         </p>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">

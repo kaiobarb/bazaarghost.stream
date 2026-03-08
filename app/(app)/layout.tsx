@@ -14,12 +14,14 @@ export default async function AppLayout({
 
   return (
     <EmbedProvider>
-      <Navbar />
-      {/* children renders GhostLoader (null) on embed routes, nothing on search routes */}
-      {children}
-      <Suspense>
-        <SearchPanel initialStats={stats} />
-      </Suspense>
+      <div className="flex h-svh flex-col overflow-hidden">
+        <Navbar />
+        {/* children renders GhostLoader (null) on embed routes, nothing on search routes */}
+        {children}
+        <Suspense>
+          <SearchPanel initialStats={stats} />
+        </Suspense>
+      </div>
     </EmbedProvider>
   );
 }

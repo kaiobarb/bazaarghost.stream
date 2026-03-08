@@ -47,7 +47,7 @@ import {
 } from "@/components/ghost-result-row";
 import { VodResultRow, type VodResult } from "@/components/vod-result-row";
 import { StreamerResultRow } from "@/components/streamer-result-row";
-import { PaginationControls } from "@/components/pagination-controls";
+import { VirtualizedResultList } from "@/components/virtualized-result-list";
 import type { StreamerWithDetections } from "@/lib/server-utils";
 
 // ---------------------------------------------------------------------------
@@ -63,7 +63,8 @@ type StreamerOption =
 // Constants
 // ---------------------------------------------------------------------------
 
-const PAGE_SIZE = 25;
+/** Number of items to fetch per batch for infinite scroll */
+const FETCH_SIZE = 50;
 
 // ---------------------------------------------------------------------------
 // URL helpers — derive search state from path + params
@@ -158,7 +159,6 @@ export default function SearchPanel({
   const searchMode = deriveSearchMode(pathname);
   const routeContext = deriveRouteContext(pathname);
   const queryParam = searchParams.get("q") ?? "";
-  const pageParam = parseInt(searchParams.get("page") ?? "1", 10) || 1;
   // Streamer filter: path-implied (from /streamer/[name]) or param-based
   const streamerParam = searchParams.get("streamer") ?? null;
   const vodParam = searchParams.get("vod") ?? null;
@@ -173,13 +173,17 @@ export default function SearchPanel({
   const [openStreamerPopover, setOpenStreamerPopover] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Results
+  // Results — accumulated for infinite scroll
   const [ghostResults, setGhostResults] = useState<GhostResult[]>([]);
   const [vodResults, setVodResults] = useState<VodResult[]>([]);
-  const [streamerResults, setStreamerResults] = useState<
-    StreamerWithDetections[]
-  >([]);
   const [totalResults, setTotalResults] = useState(0);
+
+  // Infinite scroll state
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreGhosts, setHasMoreGhosts] = useState(true);
+  const [hasMoreVods, setHasMoreVods] = useState(true);
+  const ghostOffsetRef = useRef(0);
+  const vodOffsetRef = useRef(0);
 
   const searchTimer = useRef<NodeJS.Timeout | null>(null);
   const prevSearchKey = useRef<string>("");
@@ -249,12 +253,6 @@ export default function SearchPanel({
         overrides.vod !== undefined ? overrides.vod : searchParams.get("vod");
       if (vod) params.set("vod", vod);
 
-      const page =
-        overrides.page !== undefined
-          ? overrides.page
-          : searchParams.get("page");
-      if (page && page !== "1") params.set("page", page);
-
       // Determine base path — stay on the same base path unless mode changes
       let basePath = pathname;
       if (overrides._basePath !== undefined) {
@@ -284,28 +282,33 @@ export default function SearchPanel({
       searchTimer.current = setTimeout(() => {
         replaceParams({
           q: value || null,
-          page: null, // reset page on new query
         });
       }, 300);
     },
     [replaceParams]
   );
 
-  // ---- Ghost search ----
-  const performGhostSearch = useCallback(
+  // ---- Ghost search (initial + load-more) ----
+  const fetchGhosts = useCallback(
     async (
       query: string,
-      page: number,
       streamerId: number | null,
-      vodSourceId: string | null
+      vodSourceId: string | null,
+      append: boolean
     ) => {
-      setIsLoading(true);
+      if (append) {
+        setIsLoadingMore(true);
+      } else {
+        setIsLoading(true);
+        ghostOffsetRef.current = 0;
+      }
+
       try {
-        const offset = (page - 1) * PAGE_SIZE;
+        const offset = append ? ghostOffsetRef.current : 0;
         const rpcParams: Record<string, any> = {
           search_query: query.trim() || undefined,
           similarity_threshold: 0.25,
-          result_limit: PAGE_SIZE,
+          result_limit: FETCH_SIZE,
           result_offset: offset,
           date_range_filter: "all",
         };
@@ -313,7 +316,6 @@ export default function SearchPanel({
         if (streamerId) {
           rpcParams.streamer_id_filter = streamerId;
         }
-
         if (vodSourceId) {
           rpcParams.vod_source_id_filter = vodSourceId;
         }
@@ -325,41 +327,70 @@ export default function SearchPanel({
 
         if (error) {
           console.error("Search error:", error);
-          setGhostResults([]);
-          setTotalResults(0);
+          if (!append) {
+            setGhostResults([]);
+            setTotalResults(0);
+          }
+          setHasMoreGhosts(false);
         } else if (data) {
-          setGhostResults(data as GhostResult[]);
+          const newItems = data as GhostResult[];
           const firstRow = data[0] as any;
-          if (firstRow?.total_count != null) {
-            setTotalResults(Number(firstRow.total_count));
-          } else if (data.length < PAGE_SIZE) {
-            setTotalResults(offset + data.length);
+          const serverTotal =
+            firstRow?.total_count != null
+              ? Number(firstRow.total_count)
+              : undefined;
+
+          if (append) {
+            setGhostResults((prev) => [...prev, ...newItems]);
           } else {
-            setTotalResults(
-              Math.max((page + 1) * PAGE_SIZE, offset + data.length)
-            );
+            setGhostResults(newItems);
+          }
+
+          const newOffset = offset + newItems.length;
+          ghostOffsetRef.current = newOffset;
+
+          if (serverTotal != null) {
+            setTotalResults(serverTotal);
+            setHasMoreGhosts(newOffset < serverTotal);
+          } else {
+            setTotalResults(newOffset);
+            setHasMoreGhosts(newItems.length >= FETCH_SIZE);
           }
         }
       } finally {
-        setIsLoading(false);
+        if (append) {
+          setIsLoadingMore(false);
+        } else {
+          setIsLoading(false);
+        }
       }
     },
     []
   );
 
-  // ---- VOD search ----
-  const performVodSearch = useCallback(
-    async (query: string, page: number, streamerDisplayName: string | null) => {
-      setIsLoading(true);
+  // ---- VOD search (initial + load-more) ----
+  const fetchVods = useCallback(
+    async (
+      query: string,
+      streamerDisplayName: string | null,
+      append: boolean
+    ) => {
+      if (append) {
+        setIsLoadingMore(true);
+      } else {
+        setIsLoading(true);
+        vodOffsetRef.current = 0;
+      }
+
       try {
-        const offset = (page - 1) * PAGE_SIZE;
+        const offset = append ? vodOffsetRef.current : 0;
 
         let q = supabase
           .from("vod_stats")
           .select("*", { count: "exact" })
           .eq("availability", "available")
           .order("published_at", { ascending: false })
-          .range(offset, offset + PAGE_SIZE - 1);
+          .range(offset, offset + FETCH_SIZE - 1);
 
         if (streamerDisplayName) {
           q = q.eq("streamer", streamerDisplayName);
@@ -376,8 +407,11 @@ export default function SearchPanel({
 
         if (error) {
           console.error("VOD search error:", error);
-          setVodResults([]);
-          setTotalResults(0);
+          if (!append) {
+            setVodResults([]);
+            setTotalResults(0);
+          }
+          setHasMoreVods(false);
         } else if (data) {
           const streamerByName = new Map(
             streamerOptions.map((s) => [s.streamer_display_name, s])
@@ -401,11 +435,24 @@ export default function SearchPanel({
               };
             });
 
-          setVodResults(mapped);
-          setTotalResults(count ?? mapped.length);
+          if (append) {
+            setVodResults((prev) => [...prev, ...mapped]);
+          } else {
+            setVodResults(mapped);
+          }
+
+          const serverTotal = count ?? 0;
+          const newOffset = offset + mapped.length;
+          vodOffsetRef.current = newOffset;
+          setTotalResults(serverTotal);
+          setHasMoreVods(newOffset < serverTotal);
         }
       } finally {
-        setIsLoading(false);
+        if (append) {
+          setIsLoadingMore(false);
+        } else {
+          setIsLoading(false);
+        }
       }
     },
     [streamerOptions]
@@ -428,37 +475,59 @@ export default function SearchPanel({
     );
   }, [streamerOptions, queryParam, searchMode]);
 
-  // ---- Trigger search when URL state changes ----
+  // ---- Trigger search when URL state changes (initial fetch, resets accumulated results) ----
   useEffect(() => {
     // Build a key from the search-relevant params to avoid duplicate fetches
-    const searchKey = `${searchMode}|${queryParam}|${pageParam}|${resolvedStreamer?.id ?? ""}|${effectiveVod ?? ""}`;
+    const searchKey = `${searchMode}|${queryParam}|${resolvedStreamer?.id ?? ""}|${effectiveVod ?? ""}`;
     if (searchKey === prevSearchKey.current) return;
     prevSearchKey.current = searchKey;
 
+    // Reset infinite scroll state
+    setHasMoreGhosts(true);
+    setHasMoreVods(true);
+
     if (searchMode === "ghosts") {
-      performGhostSearch(
+      fetchGhosts(
         queryParam,
-        pageParam,
         resolvedStreamer?.id ?? null,
-        effectiveVod
+        effectiveVod,
+        false // not appending — fresh search
       );
     } else if (searchMode === "vods") {
-      performVodSearch(
-        queryParam,
-        pageParam,
-        resolvedStreamer?.displayName ?? null
-      );
+      fetchVods(queryParam, resolvedStreamer?.displayName ?? null, false);
     }
     // Streamers are filtered client-side (via filteredStreamers memo)
   }, [
     searchMode,
     queryParam,
-    pageParam,
     resolvedStreamer,
     effectiveVod,
-    performGhostSearch,
-    performVodSearch,
+    fetchGhosts,
+    fetchVods,
   ]);
+
+  // ---- Load-more callbacks for infinite scroll ----
+  const loadMoreGhosts = useCallback(() => {
+    if (isLoadingMore || !hasMoreGhosts) return;
+    fetchGhosts(
+      queryParam,
+      resolvedStreamer?.id ?? null,
+      effectiveVod,
+      true // append
+    );
+  }, [
+    isLoadingMore,
+    hasMoreGhosts,
+    fetchGhosts,
+    queryParam,
+    resolvedStreamer,
+    effectiveVod,
+  ]);
+
+  const loadMoreVods = useCallback(() => {
+    if (isLoadingMore || !hasMoreVods) return;
+    fetchVods(queryParam, resolvedStreamer?.displayName ?? null, true);
+  }, [isLoadingMore, hasMoreVods, fetchVods, queryParam, resolvedStreamer]);
 
   // ---- Navigation handlers ----
 
@@ -500,7 +569,7 @@ export default function SearchPanel({
   const handleNavigateToVodGhosts = useCallback(
     (vodSourceId: string, _title: string) => {
       // Stay in ghost mode, add vod filter
-      replaceParams({ vod: vodSourceId, page: null });
+      replaceParams({ vod: vodSourceId });
     },
     [replaceParams]
   );
@@ -520,7 +589,6 @@ export default function SearchPanel({
       if (opt) {
         replaceParams({
           streamer: opt.streamer_display_name ?? String(opt.streamer_id),
-          page: null,
         });
       } else {
         // "Any streamer" selected — if on a /streamer/... route, the path
@@ -531,20 +599,11 @@ export default function SearchPanel({
           const qs = params.toString();
           router.replace(`/search${qs ? `?${qs}` : ""}`, { scroll: false });
         } else {
-          replaceParams({ streamer: null, page: null });
+          replaceParams({ streamer: null });
         }
       }
     },
     [replaceParams, routeContext.pathStreamer, queryParam, router]
-  );
-
-  /** Page change */
-  const handlePageChange = useCallback(
-    (page: number) => {
-      replaceParams({ page: String(page) });
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    },
-    [replaceParams]
   );
 
   // ---- Mode tab href builder (preserves ?q across mode switches) ----
@@ -840,44 +899,33 @@ export default function SearchPanel({
   );
 
   const searchResults = (
-    <div className="space-y-3 p-4">
+    <>
       {searchMode === "ghosts" && (
         <>
           {!isLoading && ghostResults.length > 0 && (
-            <>
-              <PaginationControls
-                currentPage={pageParam}
-                totalResults={totalResults}
-                pageSize={PAGE_SIZE}
-                onPageChange={handlePageChange}
-              />
-              <div className="space-y-2">
-                {ghostResults.map((ghost) => (
-                  <GhostResultRow
-                    key={ghost.detection_id}
-                    ghost={ghost}
-                    isActive={
-                      activeVideoId === ghost.vod_source_id &&
-                      Math.abs(activeTime - ghost.frame_time_seconds) < 5
-                    }
-                    onNavigateToStreamer={handleNavigateToStreamer}
-                    onNavigateToVod={handleNavigateToVodGhosts}
-                    onRowClick={() => handleGhostClick(ghost)}
-                  />
-                ))}
-              </div>
-              {Math.ceil(totalResults / PAGE_SIZE) > 1 && (
-                <PaginationControls
-                  currentPage={pageParam}
-                  totalResults={totalResults}
-                  pageSize={PAGE_SIZE}
-                  onPageChange={handlePageChange}
+            <VirtualizedResultList
+              items={ghostResults}
+              totalCount={totalResults}
+              getItemKey={(g) => g.detection_id}
+              renderItem={(ghost) => (
+                <GhostResultRow
+                  ghost={ghost}
+                  isActive={
+                    activeVideoId === ghost.vod_source_id &&
+                    Math.abs(activeTime - ghost.frame_time_seconds) < 5
+                  }
+                  onNavigateToStreamer={handleNavigateToStreamer}
+                  onNavigateToVod={handleNavigateToVodGhosts}
+                  onRowClick={() => handleGhostClick(ghost)}
                 />
               )}
-            </>
+              onLoadMore={loadMoreGhosts}
+              isLoadingMore={isLoadingMore}
+              hasMore={hasMoreGhosts}
+            />
           )}
           {!isLoading && ghostResults.length === 0 && queryParam && (
-            <p className="py-16 text-center text-muted-foreground">
+            <p className="px-4 py-16 text-center text-muted-foreground">
               No ghosts found for &ldquo;{queryParam}&rdquo;
             </p>
           )}
@@ -887,37 +935,26 @@ export default function SearchPanel({
       {searchMode === "vods" && (
         <>
           {!isLoading && vodResults.length > 0 && (
-            <>
-              <PaginationControls
-                currentPage={pageParam}
-                totalResults={totalResults}
-                pageSize={PAGE_SIZE}
-                onPageChange={handlePageChange}
-              />
-              <div className="space-y-2">
-                {vodResults.map((vod) => (
-                  <VodResultRow
-                    key={vod.vod_source_id}
-                    vod={vod}
-                    isActive={activeVideoId === vod.vod_source_id}
-                    onNavigateToStreamer={handleNavigateToStreamer}
-                    onNavigateToGhosts={handleNavigateToVodGhosts}
-                    onRowClick={() => handleVodClick(vod)}
-                  />
-                ))}
-              </div>
-              {Math.ceil(totalResults / PAGE_SIZE) > 1 && (
-                <PaginationControls
-                  currentPage={pageParam}
-                  totalResults={totalResults}
-                  pageSize={PAGE_SIZE}
-                  onPageChange={handlePageChange}
+            <VirtualizedResultList
+              items={vodResults}
+              totalCount={totalResults}
+              getItemKey={(v) => v.vod_source_id}
+              renderItem={(vod) => (
+                <VodResultRow
+                  vod={vod}
+                  isActive={activeVideoId === vod.vod_source_id}
+                  onNavigateToStreamer={handleNavigateToStreamer}
+                  onNavigateToGhosts={handleNavigateToVodGhosts}
+                  onRowClick={() => handleVodClick(vod)}
                 />
               )}
-            </>
+              onLoadMore={loadMoreVods}
+              isLoadingMore={isLoadingMore}
+              hasMore={hasMoreVods}
+            />
           )}
           {!isLoading && vodResults.length === 0 && queryParam && (
-            <p className="py-16 text-center text-muted-foreground">
+            <p className="px-4 py-16 text-center text-muted-foreground">
               No VODs found for &ldquo;{queryParam}&rdquo;
             </p>
           )}
@@ -927,18 +964,28 @@ export default function SearchPanel({
       {searchMode === "streamers" && (
         <>
           {filteredStreamers.length > 0 ? (
-            <div className="space-y-2">
-              {filteredStreamers.map((s) => (
+            <VirtualizedResultList
+              items={filteredStreamers}
+              totalCount={filteredStreamers.length}
+              getItemKey={(s) =>
+                s.streamer_id ??
+                s.streamer_login ??
+                s.streamer_display_name ??
+                "unknown"
+              }
+              renderItem={(s) => (
                 <StreamerResultRow
-                  key={s.streamer_id}
                   streamer={s}
                   onNavigateToVods={handleStreamerClick}
                 />
-              ))}
-            </div>
+              )}
+              onLoadMore={() => {}}
+              isLoadingMore={false}
+              hasMore={false}
+            />
           ) : (
             queryParam && (
-              <p className="py-16 text-center text-muted-foreground">
+              <p className="px-4 py-16 text-center text-muted-foreground">
                 No streamers found for &ldquo;{queryParam}&rdquo;
               </p>
             )
@@ -951,15 +998,15 @@ export default function SearchPanel({
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       )}
-    </div>
+    </>
   );
 
   // ---- Mobile: search in page, embed in drawer ----
   if (isMobile) {
     return (
-      <div className="flex min-h-[calc(100svh-3.5rem)] w-full flex-col bg-background">
+      <div className="flex min-h-0 w-full flex-1 flex-col bg-background">
         {searchHeader}
-        <div className="flex-1 pb-16">{searchResults}</div>
+        {searchResults}
         <EmbedDrawer headerHeight={searchHeaderHeight} />
       </div>
     );
@@ -969,7 +1016,7 @@ export default function SearchPanel({
   return (
     <ResizablePanelGroup
       orientation="horizontal"
-      className="min-h-[calc(100svh-3.5rem)] w-full"
+      className="min-h-0 w-full flex-1"
     >
       {/* Search panel */}
       <ResizablePanel
@@ -979,13 +1026,17 @@ export default function SearchPanel({
         className="flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
       >
         {searchHeader}
-        <div className="min-h-0 flex-1 overflow-y-auto">{searchResults}</div>
+        {searchResults}
       </ResizablePanel>
 
       <ResizableHandle withHandle />
 
       {/* Embed / main content */}
-      <ResizablePanel defaultSize="70%" minSize="40%" className="bg-background">
+      <ResizablePanel
+        defaultSize="70%"
+        minSize="40%"
+        className="overflow-y-auto bg-background"
+      >
         <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-4 py-4 lg:px-6">
           <div className="flex-1">
             <div className="mx-auto w-full max-w-5xl">

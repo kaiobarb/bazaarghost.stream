@@ -61,15 +61,15 @@ export function GhostResultRow({
     <div
       onClick={handlePlay}
       className={cn(
-        "cursor-pointer overflow-hidden rounded-lg border transition-colors",
+        "box-border h-[72px] cursor-pointer overflow-hidden rounded-lg border transition-colors",
         isActive
           ? "border-primary bg-primary/5"
           : "border-border bg-card hover:border-primary/50"
       )}
     >
-      <div className="flex items-center gap-4 p-4">
+      <div className="flex h-full items-center gap-3 px-3">
         {/* Streamer avatar */}
-        <Avatar className="size-10 shrink-0">
+        <Avatar className="size-9 shrink-0">
           <AvatarImage
             src={ghost.streamer_avatar || "/placeholder.svg"}
             alt={ghost.streamer_display_name}
@@ -80,8 +80,8 @@ export function GhostResultRow({
         </Avatar>
 
         {/* Main content */}
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5 md:flex-row md:items-center md:gap-2">
-          <div className="flex items-center gap-1 text-sm">
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+          <div className="flex items-center gap-1 truncate text-sm">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -90,27 +90,27 @@ export function GhostResultRow({
                   ghost.streamer_display_name
                 );
               }}
-              className="font-medium text-primary hover:underline"
+              className="shrink-0 font-medium text-primary hover:underline"
             >
               {ghost.streamer_display_name}
             </button>
-            <span className="text-muted-foreground">vs</span>
+            <span className="shrink-0 text-muted-foreground">vs</span>
             {ghost.rank && (
               <Image
                 src={`/${ghost.rank.toLowerCase()}.webp`}
                 alt={ghost.rank}
-                width={28}
-                height={28}
-                className="inline-block"
+                width={22}
+                height={22}
+                className="inline-block shrink-0"
               />
             )}
-            <span className="font-medium text-foreground">
+            <span className="truncate font-medium text-foreground">
               {ghost.username}
             </span>
           </div>
 
           {/* Meta */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground md:ml-auto">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <button
               onClick={(e) => {
                 e.stopPropagation();
