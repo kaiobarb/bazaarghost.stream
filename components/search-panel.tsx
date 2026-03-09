@@ -919,6 +919,9 @@ export default function SearchPanel() {
               items={ghostResults}
               totalCount={totalResults}
               getItemKey={(g) => g.detection_id}
+              getItemDate={(g) => g.actual_timestamp}
+              getItemMatchField={(g) => g.username}
+              searchQuery={queryParam}
               renderItem={(ghost) => (
                 <GhostResultRow
                   ghost={ghost}
@@ -949,6 +952,7 @@ export default function SearchPanel() {
               items={vodResults}
               totalCount={totalResults}
               getItemKey={(v) => v.vod_source_id}
+              getItemDate={(v) => v.published_at}
               renderItem={(vod) => (
                 <VodResultRow
                   vod={vod}
