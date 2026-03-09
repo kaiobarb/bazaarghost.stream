@@ -698,22 +698,19 @@ export function EmbedPanel() {
                 className="size-7 text-muted-foreground hover:text-foreground"
                 title="Copy shareable link"
                 onClick={() => {
-                  // If we're already on an embed route, copy the clean path (no query params)
-                  const isEmbedRoute = pathname.startsWith("/streamer/");
-                  if (isEmbedRoute) {
-                    const url = `${window.location.origin}${pathname}`;
+                  // Build a shareable link: /:streamer/:vodId/:ghost or /:streamer/:vodId
+                  const ghost = currentGhost;
+                  if (ghost && meta?.streamerName) {
+                    const url = `${window.location.origin}/${encodeURIComponent(meta.streamerName)}/${videoId}/${encodeURIComponent(ghost.username)}`;
+                    navigator.clipboard.writeText(url);
+                  } else if (meta?.streamerName) {
+                    const url = `${window.location.origin}/${encodeURIComponent(meta.streamerName)}/${videoId}`;
                     navigator.clipboard.writeText(url);
                   } else {
-                    // Fallback: construct from current ghost or Twitch link
-                    const ghost = currentGhost;
-                    if (ghost && meta?.streamerName) {
-                      const url = `${window.location.origin}/streamer/${encodeURIComponent(meta.streamerName)}/vs/${encodeURIComponent(ghost.username)}/${videoId}`;
-                      navigator.clipboard.writeText(url);
-                    } else {
-                      const t = secondsToTwitchTimestamp(timestamp ?? 0);
-                      const url = `https://www.twitch.tv/videos/${videoId}?t=${t}`;
-                      navigator.clipboard.writeText(url);
-                    }
+                    // No streamer metadata available — fall back to Twitch link
+                    const t = secondsToTwitchTimestamp(timestamp ?? 0);
+                    const url = `https://www.twitch.tv/videos/${videoId}?t=${t}`;
+                    navigator.clipboard.writeText(url);
                   }
                 }}
               >

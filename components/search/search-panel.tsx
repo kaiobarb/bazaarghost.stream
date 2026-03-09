@@ -1,0 +1,241 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEmbed } from "@/components/embed-provider";
+import { useIsMobile } from "@/hooks/use-mobile";
+import type { VodResult } from "@/components/vod-result-row";
+
+import { useSearchUrl } from "./hooks/use-search-url";
+import { useStreamerOptions } from "./hooks/use-streamer-options";
+import { useGhostSearch } from "./hooks/use-ghost-search";
+import { useVodSearch } from "./hooks/use-vod-search";
+
+import { SearchHeader } from "./search-header";
+import { SearchResults } from "./search-results";
+import { DesktopLayout } from "./desktop-layout";
+import { MobileLayout } from "./mobile-layout";
+
+/**
+ * Props for {@link SearchPanel}.
+ */
+interface SearchPanelProps {
+  showSearchTabs?: boolean;
+}
+
+/**
+ * Top-level search panel orchestrator.
+ *
+ * Composes the search hooks ({@link useSearchUrl}, {@link useStreamerOptions},
+ * {@link useGhostSearch}, {@link useVodSearch}) with the presentational
+ * components ({@link SearchHeader}, {@link SearchResults}) and selects the
+ * appropriate layout ({@link DesktopLayout} or {@link MobileLayout}) based on
+ * viewport width.
+ *
+ * This component owns no data-fetching or URL-mutation logic itself — it
+ * delegates entirely to the hooks and passes their return values through as
+ * props to the UI layer.
+ */
+export default function SearchPanel({
+  showSearchTabs = false,
+}: SearchPanelProps) {
+  const router = useRouter();
+  const isMobile = useIsMobile();
+  const {
+    isVisible: embedVisible,
+    videoId: activeVideoId,
+    currentTime: activeTime,
+  } = useEmbed();
+
+  // ---- URL state ----
+  const {
+    searchMode,
+    routeContext,
+    queryParam,
+    effectiveStreamer,
+    effectiveVod,
+    inputValue,
+    handleInputChange,
+    replaceParams,
+    buildSearchUrl,
+  } = useSearchUrl();
+
+  // ---- Streamer options & picker ----
+  const {
+    streamerOptions,
+    resolvedStreamer,
+    filteredStreamers,
+    openStreamerPopover,
+    setOpenStreamerPopover,
+    handleSelectStreamer,
+  } = useStreamerOptions({
+    effectiveStreamer,
+    searchMode,
+    queryParam,
+    replaceParams,
+    routePathStreamer: routeContext.pathStreamer,
+  });
+
+  // ---- Ghost search ----
+  const {
+    ghostResults,
+    totalResults: ghostTotalResults,
+    isLoading: isGhostLoading,
+    isLoadingMore: isGhostLoadingMore,
+    hasMoreGhosts,
+    loadMoreGhosts,
+  } = useGhostSearch({
+    queryParam,
+    streamerId: resolvedStreamer?.id ?? null,
+    effectiveVod,
+    enabled: searchMode === "ghosts",
+  });
+
+  // ---- VOD search ----
+  const {
+    vodResults,
+    totalResults: vodTotalResults,
+    isLoading: isVodLoading,
+    isLoadingMore: isVodLoadingMore,
+    hasMoreVods,
+    loadMoreVods,
+  } = useVodSearch({
+    queryParam,
+    streamerDisplayName: resolvedStreamer?.displayName ?? null,
+    streamerOptions,
+    enabled: searchMode === "vods",
+  });
+
+  /** Navigate to a streamer's page at `/:name`. */
+  const handleNavigateToStreamer = useCallback(
+    (_streamerId: number, name: string) => {
+      router.push(`/${encodeURIComponent(name)}`, { scroll: false });
+    },
+    [router]
+  );
+
+  /** Add a `?vod=` filter to show ghosts for a specific VOD. */
+  const handleNavigateToVodGhosts = useCallback(
+    (vodSourceId: string, _title: string) => {
+      replaceParams({ vod: vodSourceId });
+    },
+    [replaceParams]
+  );
+
+  /** Navigate to the VOD embed route at `/:name/:vodId`. */
+  const handleVodClick = useCallback(
+    (vod: VodResult) => {
+      const path = `/${encodeURIComponent(vod.streamer_display_name)}/${vod.vod_source_id}`;
+      router.push(path, { scroll: false });
+    },
+    [router]
+  );
+
+  /** Navigate to a streamer's page (used from the streamers result list). */
+  const handleStreamerClick = useCallback(
+    (_streamerId: number, name: string) => {
+      router.push(`/${encodeURIComponent(name)}`, { scroll: false });
+    },
+    [router]
+  );
+
+  /** Build a tab href that preserves the current `?q=` across mode switches. */
+  const buildModeHref = useCallback(
+    (baseHref: string) => {
+      if (queryParam) return `${baseHref}?q=${encodeURIComponent(queryParam)}`;
+      return baseHref;
+    },
+    [queryParam]
+  );
+
+  /** Navigate to a different search mode tab. */
+  const handleModeChange = useCallback(
+    (href: string) => {
+      router.push(buildModeHref(href));
+    },
+    [router, buildModeHref]
+  );
+
+  // ---- Measure search header height for mobile sheet ----
+  const searchHeaderRef = useRef<HTMLDivElement>(null);
+  const [searchHeaderHeight, setSearchHeaderHeight] = useState(0);
+
+  useEffect(() => {
+    const el = searchHeaderRef.current;
+    if (!el) return;
+    const measure = () =>
+      setSearchHeaderHeight(el.getBoundingClientRect().height);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isMobile]);
+
+  // ---- Shared UI elements ----
+  const isLoading =
+    (searchMode === "ghosts" && isGhostLoading) ||
+    (searchMode === "vods" && isVodLoading);
+
+  const searchHeader = (
+    <SearchHeader
+      ref={searchHeaderRef}
+      searchMode={searchMode}
+      showSearchTabs={showSearchTabs}
+      inputValue={inputValue}
+      isLoading={isLoading}
+      onInputChange={handleInputChange}
+      onModeChange={handleModeChange}
+      streamerOptions={streamerOptions}
+      resolvedStreamer={resolvedStreamer}
+      effectiveStreamer={effectiveStreamer}
+      openStreamerPopover={openStreamerPopover}
+      onOpenStreamerPopover={setOpenStreamerPopover}
+      onSelectStreamer={handleSelectStreamer}
+    />
+  );
+
+  const searchResults = (
+    <SearchResults
+      searchMode={searchMode}
+      queryParam={queryParam}
+      ghostResults={ghostResults}
+      ghostTotalResults={ghostTotalResults}
+      isGhostLoading={isGhostLoading}
+      isGhostLoadingMore={isGhostLoadingMore}
+      hasMoreGhosts={hasMoreGhosts}
+      loadMoreGhosts={loadMoreGhosts}
+      activeVideoId={activeVideoId}
+      activeTime={activeTime}
+      vodResults={vodResults}
+      vodTotalResults={vodTotalResults}
+      isVodLoading={isVodLoading}
+      isVodLoadingMore={isVodLoadingMore}
+      hasMoreVods={hasMoreVods}
+      loadMoreVods={loadMoreVods}
+      filteredStreamers={filteredStreamers}
+      onNavigateToStreamer={handleNavigateToStreamer}
+      onNavigateToVodGhosts={handleNavigateToVodGhosts}
+      onVodClick={handleVodClick}
+      onStreamerClick={handleStreamerClick}
+    />
+  );
+
+  // ---- Layout branching ----
+  if (isMobile) {
+    return (
+      <MobileLayout
+        searchHeader={searchHeader}
+        searchResults={searchResults}
+        searchHeaderHeight={searchHeaderHeight}
+      />
+    );
+  }
+
+  return (
+    <DesktopLayout
+      searchHeader={searchHeader}
+      searchResults={searchResults}
+      embedVisible={embedVisible}
+    />
+  );
+}

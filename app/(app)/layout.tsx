@@ -1,7 +1,7 @@
 import type React from "react";
 import { Suspense } from "react";
 import { EmbedProvider } from "@/components/embed-provider";
-import SearchPanel from "@/components/search-panel";
+import SearchPanel from "@/components/search";
 import Navbar from "@/components/navbar";
 import { getGlobalStats } from "@/lib/server-utils";
 import { showSearchTabs } from "@/flags";
