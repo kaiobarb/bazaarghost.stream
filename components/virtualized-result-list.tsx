@@ -472,7 +472,7 @@ export function VirtualizedResultList<T>({
 
           {/* End of list */}
           {!hasMore && items.length > 0 && (
-            <p className="py-4 text-center font-mono text-xs text-muted-foreground">
+            <p className="pt-4 pb-100 text-center font-mono text-xs text-muted-foreground">
               end of results
             </p>
           )}

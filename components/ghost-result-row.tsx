@@ -43,15 +43,15 @@ export function GhostResultRow({
     <div
       onClick={handlePlay}
       className={cn(
-        "box-border h-[72px] cursor-pointer overflow-hidden rounded-lg border transition-colors",
+        "@container box-border h-[72px] cursor-pointer overflow-hidden rounded-lg border transition-colors",
         isActive
           ? "border-primary bg-primary/5"
           : "border-border bg-card hover:border-primary/50"
       )}
     >
       <div className="flex h-full items-center gap-3 px-3">
-        {/* Streamer avatar */}
-        <Avatar className="size-9 shrink-0">
+        {/* Streamer avatar — hidden below 200px */}
+        <Avatar className="hidden size-9 shrink-0 @[200px]:block">
           <AvatarImage
             src={ghost.streamer_avatar || "/placeholder.svg"}
             alt={ghost.streamer_display_name}
@@ -63,7 +63,8 @@ export function GhostResultRow({
 
         {/* Main content */}
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
-          <div className="flex items-center gap-1 truncate text-sm">
+          <div className="flex min-w-0 items-center gap-1 text-sm">
+            {/* Streamer name + vs — hidden below 200px */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -72,11 +73,13 @@ export function GhostResultRow({
                   ghost.streamer_display_name
                 );
               }}
-              className="shrink-0 font-medium text-primary hover:underline"
+              className="hidden min-w-0 shrink truncate font-medium text-primary hover:underline @[200px]:block"
             >
               {ghost.streamer_display_name}
             </button>
-            <span className="shrink-0 text-muted-foreground">vs</span>
+            <span className="hidden shrink-0 text-muted-foreground @[200px]:block">
+              vs
+            </span>
             {ghost.rank && (
               <Image
                 src={`/${ghost.rank.toLowerCase()}.webp`}
@@ -86,7 +89,7 @@ export function GhostResultRow({
                 className="inline-block shrink-0"
               />
             )}
-            <span className="truncate font-medium text-foreground">
+            <span className="shrink-0 font-medium text-foreground">
               {ghost.username}
             </span>
           </div>

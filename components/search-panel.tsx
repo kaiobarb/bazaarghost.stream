@@ -409,8 +409,15 @@ export default function SearchPanel() {
             streamerOptions.map((s) => [s.streamer_display_name, s])
           );
 
+          const seen = new Set<string>();
           const mapped: VodResult[] = data
             .filter((v) => v.source_id && v.title)
+            .filter((v) => {
+              // Deduplicate — vod_stats view can return multiple rows per source_id
+              if (seen.has(v.source_id!)) return false;
+              seen.add(v.source_id!);
+              return true;
+            })
             .map((v) => {
               const s = streamerByName.get(v.streamer ?? "");
               return {
@@ -428,7 +435,13 @@ export default function SearchPanel() {
             });
 
           if (append) {
-            setVodResults((prev) => [...prev, ...mapped]);
+            setVodResults((prev) => {
+              const existing = new Set(prev.map((v) => v.vod_source_id));
+              return [
+                ...prev,
+                ...mapped.filter((v) => !existing.has(v.vod_source_id)),
+              ];
+            });
           } else {
             setVodResults(mapped);
           }
@@ -500,7 +513,7 @@ export default function SearchPanel() {
 
   // ---- Load-more callbacks for infinite scroll ----
   const loadMoreGhosts = useCallback(() => {
-    if (isLoadingMore || !hasMoreGhosts) return;
+    if (isLoading || isLoadingMore || !hasMoreGhosts) return;
     fetchGhosts(
       queryParam,
       resolvedStreamer?.id ?? null,
@@ -508,6 +521,7 @@ export default function SearchPanel() {
       true // append
     );
   }, [
+    isLoading,
     isLoadingMore,
     hasMoreGhosts,
     fetchGhosts,
@@ -517,9 +531,16 @@ export default function SearchPanel() {
   ]);
 
   const loadMoreVods = useCallback(() => {
-    if (isLoadingMore || !hasMoreVods) return;
+    if (isLoading || isLoadingMore || !hasMoreVods) return;
     fetchVods(queryParam, resolvedStreamer?.displayName ?? null, true);
-  }, [isLoadingMore, hasMoreVods, fetchVods, queryParam, resolvedStreamer]);
+  }, [
+    isLoading,
+    isLoadingMore,
+    hasMoreVods,
+    fetchVods,
+    queryParam,
+    resolvedStreamer,
+  ]);
 
   // ---- Navigation handlers ----
 
