@@ -4,13 +4,17 @@ import { EmbedProvider } from "@/components/embed-provider";
 import SearchPanel from "@/components/search-panel";
 import Navbar from "@/components/navbar";
 import { getGlobalStats } from "@/lib/server-utils";
+import { showSearchTabs } from "@/flags";
 
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const stats = await getGlobalStats();
+  const [stats, searchTabs] = await Promise.all([
+    getGlobalStats(),
+    showSearchTabs(),
+  ]);
 
   return (
     <EmbedProvider>
@@ -23,7 +27,7 @@ export default async function AppLayout({
         {/* children renders GhostLoader (null) on embed routes, nothing on search routes */}
         {children}
         <Suspense>
-          <SearchPanel />
+          <SearchPanel showSearchTabs={searchTabs} />
         </Suspense>
       </div>
     </EmbedProvider>

@@ -140,7 +140,13 @@ const modeOptions: {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function SearchPanel() {
+interface SearchPanelProps {
+  showSearchTabs?: boolean;
+}
+
+export default function SearchPanel({
+  showSearchTabs = false,
+}: SearchPanelProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -635,30 +641,32 @@ export default function SearchPanel() {
       className="relative z-50 flex flex-col gap-3 bg-background p-1"
     >
       <div className="@container flex flex-col gap-2">
-        {/* Mode tabs */}
-        <Tabs
-          value={searchMode}
-          onValueChange={(v: string) => {
-            const opt = modeOptions.find((o) => o.value === v);
-            if (opt) router.push(buildModeHref(opt.href));
-          }}
-        >
-          <TabsList className="w-full" variant="line">
-            {modeOptions.map((opt) => {
-              const Icon = opt.icon;
-              return (
-                <TabsTrigger
-                  key={opt.value}
-                  value={opt.value}
-                  className="after:bg-accent data-[state=active]:text-accent dark:data-[state=active]:text-accent"
-                >
-                  <Icon className="size-3.5" />
-                  {opt.label}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        </Tabs>
+        {/* Mode tabs — hidden when feature flag is off */}
+        {showSearchTabs && (
+          <Tabs
+            value={searchMode}
+            onValueChange={(v: string) => {
+              const opt = modeOptions.find((o) => o.value === v);
+              if (opt) router.push(buildModeHref(opt.href));
+            }}
+          >
+            <TabsList className="w-full" variant="line">
+              {modeOptions.map((opt) => {
+                const Icon = opt.icon;
+                return (
+                  <TabsTrigger
+                    key={opt.value}
+                    value={opt.value}
+                    className="after:bg-accent data-[state=active]:text-accent dark:data-[state=active]:text-accent"
+                  >
+                    <Icon className="size-3.5" />
+                    {opt.label}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </Tabs>
+        )}
 
         {/* Search inputs — vary by mode */}
         {searchMode === "ghosts" ? (
