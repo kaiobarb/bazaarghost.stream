@@ -55,13 +55,13 @@ export function DesktopLayout({
       >
         <div className="flex h-full flex-col">
           <EmbedPanel />
-          {!embedVisible && (
+          {/* {!embedVisible && (
             <div className="flex flex-1 items-center justify-center border border-dashed border-border bg-card/30 px-6">
               <p className="text-center text-sm text-muted-foreground">
                 Select a result to load a VOD embed.
               </p>
             </div>
-          )}
+          )} */}
         </div>
       </ResizablePanel>
     </ResizablePanelGroup>

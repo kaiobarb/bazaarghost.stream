@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef } from "react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StreamerPicker } from "./streamer-picker";
 import { SearchInput } from "./search-input";
 import { modeOptions } from "./constants";
@@ -62,7 +62,7 @@ export const SearchHeader = forwardRef<HTMLDivElement, SearchHeaderProps>(
         ref={ref}
         className="relative z-50 flex flex-col gap-3 bg-background p-1"
       >
-        <div className="@container flex flex-col gap-2 pb-2">
+        <div className="@container flex flex-col gap-2 py-2">
           {/* Mode tabs — hidden when feature flag is off */}
           {showSearchTabs && (
             <Tabs
@@ -79,7 +79,7 @@ export const SearchHeader = forwardRef<HTMLDivElement, SearchHeaderProps>(
                     <TabsTrigger
                       key={opt.value}
                       value={opt.value}
-                      className="after:bg-accent data-[state=active]:text-accent dark:data-[state=active]:text-accent max-w-25"
+                      className="after:bg-accent data-[state=active]:text-accent dark:data-[state=active]:text-accent max-w-25 text-sm"
                     >
                       <Icon className="size-4" />
                       {opt.label}
@@ -87,6 +87,14 @@ export const SearchHeader = forwardRef<HTMLDivElement, SearchHeaderProps>(
                   );
                 })}
               </TabsList>
+              {/* Hidden content panels so Radix aria-controls IDs resolve */}
+              {modeOptions.map((opt) => (
+                <TabsContent
+                  key={opt.value}
+                  value={opt.value}
+                  className="hidden"
+                />
+              ))}
             </Tabs>
           )}
 

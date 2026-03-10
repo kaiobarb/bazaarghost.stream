@@ -121,6 +121,7 @@ export default function Navbar() {
               variant="ghost"
               size="icon"
               onClick={toggleTheme}
+              aria-label="Toggle theme"
               className="text-foreground hover:text-primary"
             >
               {!mounted ? (
@@ -231,6 +232,7 @@ export default function Navbar() {
                     variant="ghost"
                     size="icon"
                     onClick={toggleTheme}
+                    aria-label="Toggle theme"
                     className="text-foreground hover:text-primary"
                   >
                     {!mounted ? (

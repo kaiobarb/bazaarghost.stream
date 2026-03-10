@@ -58,6 +58,7 @@ export function StreamerPicker({
         <Button
           variant="outline"
           role="combobox"
+          aria-label="Select streamer"
           className={cn(
             "h-10 w-full justify-between border-border bg-card px-3",
             triggerClassName
@@ -68,7 +69,7 @@ export function StreamerPicker({
               <Avatar className="size-5">
                 <AvatarImage
                   src={resolvedStreamer.avatar || undefined}
-                  alt={resolvedStreamer.displayName}
+                  alt=""
                 />
                 <AvatarFallback className="bg-primary text-[7px] text-primary-foreground">
                   {resolvedStreamer.displayName[0]?.toUpperCase()}
@@ -85,7 +86,8 @@ export function StreamerPicker({
             <span
               role="button"
               tabIndex={0}
-              className="ml-1 shrink-0 rounded-sm p-0.5 opacity-50 hover:opacity-100"
+              aria-label="Clear streamer"
+              className="ml-1 shrink-0 rounded-sm p-1.5 opacity-50 hover:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
                 onSelect(null);
@@ -136,10 +138,7 @@ export function StreamerPicker({
                     )}
                   />
                   <Avatar className="size-5">
-                    <AvatarImage
-                      src={s.streamer_avatar ?? undefined}
-                      alt={s.streamer_display_name ?? ""}
-                    />
+                    <AvatarImage src={s.streamer_avatar ?? undefined} alt="" />
                     <AvatarFallback className="text-[8px]">
                       {(s.streamer_display_name ?? "?")[0]?.toUpperCase()}
                     </AvatarFallback>
