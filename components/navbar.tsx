@@ -43,9 +43,7 @@ export default function Navbar() {
               height={25}
               className="object-contain"
             />
-            <h1 className="text-xl font-bold text-primary">
-              BazaarGhost.Stream
-            </h1>
+            <h1 className="text-xl font-bold text-primary">BazaarGhost</h1>
           </Link>
 
           {/* Desktop Navigation - Hidden on mobile */}
