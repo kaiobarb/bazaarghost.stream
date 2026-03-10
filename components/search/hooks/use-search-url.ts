@@ -64,14 +64,21 @@ export function useSearchUrl(): UseSearchUrlReturn {
   const effectiveStreamer = streamerParam;
   const effectiveVod = vodParam ?? routeContext.pathVodId;
 
+  // On `/ghost/:username`, seed the query from the path when ?q= is absent.
+  // This keeps the search input and ghost search hook in sync with the route.
+  const effectiveQuery =
+    !queryParam && routeContext.pathUsername
+      ? routeContext.pathUsername
+      : queryParam;
+
   // ---- Local controlled input ----
-  const [inputValue, setInputValue] = useState(queryParam);
+  const [inputValue, setInputValue] = useState(effectiveQuery);
   const searchTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync input value when URL changes (e.g. back/forward)
+  // Sync input value when URL or path-derived query changes
   useEffect(() => {
-    setInputValue(queryParam);
-  }, [queryParam]);
+    setInputValue(effectiveQuery);
+  }, [effectiveQuery]);
 
   /**
    * Build a full URL string from the current path + params, with selective
@@ -129,7 +136,7 @@ export function useSearchUrl(): UseSearchUrlReturn {
   return {
     searchMode,
     routeContext,
-    queryParam,
+    queryParam: effectiveQuery,
     streamerParam,
     vodParam,
     effectiveStreamer,

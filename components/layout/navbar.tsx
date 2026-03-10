@@ -55,6 +55,12 @@ export default function Navbar() {
               Search
             </Link>
             <Link
+              href="/leaderboard"
+              className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors"
+            >
+              Leaderboard
+            </Link>
+            <Link
               href="/streamers"
               className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors"
             >
@@ -157,6 +163,13 @@ export default function Navbar() {
                   className="text-lg font-medium text-foreground/70 hover:text-foreground transition-colors"
                 >
                   Search
+                </Link>
+                <Link
+                  href="/leaderboard"
+                  onClick={() => setIsOpen(false)}
+                  className="text-lg font-medium text-foreground/70 hover:text-foreground transition-colors"
+                >
+                  Leaderboard
                 </Link>
                 <Link
                   href="/streamers"

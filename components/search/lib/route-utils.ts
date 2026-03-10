@@ -9,6 +9,7 @@ const STATIC_PREFIXES = [
   "/streamers",
   "/vods",
   "/ghost",
+  "/leaderboard",
   "/contact",
   "/donate",
   "/how-it-works",

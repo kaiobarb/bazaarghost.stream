@@ -7,7 +7,7 @@ import { useStreamerOptions } from "./hooks/use-streamer-options";
 import { SearchHeader } from "./search-header";
 
 /** Routes where the search panel with results is active. */
-const SEARCH_ROUTES = ["/search", "/vods", "/streamers"];
+const SEARCH_ROUTES = ["/search", "/vods", "/streamers", "/ghost"];
 
 /**
  * Props for {@link GlobalSearchHeader}.
