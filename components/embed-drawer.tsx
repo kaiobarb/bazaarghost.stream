@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronUp, Pause, Play } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EmbedPanel } from "@/components/embed-panel";
@@ -34,27 +34,11 @@ export function EmbedDrawer({ headerHeight = 0 }: EmbedDrawerProps) {
     pause,
     play,
     togglePlay,
-    ghosts,
-    currentTime,
+    activeGhost,
   } = useEmbed();
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  // Derive current ghost from playback position
-  const currentGhostName = useMemo(() => {
-    if (ghosts.length === 0) return null;
-    const sorted = [...ghosts].sort(
-      (a, b) => a.frame_time_seconds - b.frame_time_seconds
-    );
-    let name: string | null = null;
-    for (const g of sorted) {
-      if (g.frame_time_seconds <= currentTime) {
-        name = g.username;
-      } else {
-        break;
-      }
-    }
-    return name;
-  }, [ghosts, currentTime]);
+  const currentGhostName = activeGhost?.username ?? null;
 
   // Open the sheet when a new ghost/vod is selected.
   // Close when explicitly dismissed via the X button.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -480,31 +480,72 @@ export function EmbedPanel() {
     togglePlay,
     toggleMute,
     seek,
-    ghosts,
+    ghosts: sortedGhosts,
+    activeGhost: currentGhost,
+    setActiveGhost,
     bazaarChapters,
   } = useEmbed();
   const pathname = usePathname();
+  const router = useRouter();
 
-  // ---- Derived: current ghost based on playback position ----
-  const sortedGhosts = useMemo(
-    () =>
-      [...ghosts].sort((a, b) => a.frame_time_seconds - b.frame_time_seconds),
-    [ghosts]
+  /**
+   * Build the canonical URL path for the given ghost + VOD context.
+   * Returns `/:streamer/:vodId/:ghost` or `/:streamer/:vodId`.
+   */
+  const buildGhostUrl = useCallback(
+    (
+      ghost: EmbedGhost | null,
+      overrideVideoId?: string,
+      overrideStreamer?: string
+    ) => {
+      const vid = overrideVideoId ?? videoId;
+      const streamer = overrideStreamer ?? meta?.streamerName;
+      if (!vid || !streamer) return null;
+      return ghost
+        ? `/${encodeURIComponent(streamer)}/${vid}/${encodeURIComponent(ghost.username)}`
+        : `/${encodeURIComponent(streamer)}/${vid}`;
+    },
+    [videoId, meta?.streamerName]
   );
 
-  const currentGhost = useMemo(() => {
-    if (sortedGhosts.length === 0) return null;
-    // Find the last ghost whose frame_time_seconds <= currentTime
-    let match: EmbedGhost | null = null;
-    for (const g of sortedGhosts) {
-      if (g.frame_time_seconds <= currentTime) {
-        match = g;
-      } else {
-        break;
+  /**
+   * Push a new history entry for a user-triggered ghost change (row click,
+   * arrow nav, timeline click). Since the (app)/layout.tsx persists across
+   * these routes, only the leaf page.tsx re-renders — the embed, search
+   * panel, and navbar are unaffected.
+   */
+  const pushGhostUrl = useCallback(
+    (
+      ghost: EmbedGhost | null,
+      overrideVideoId?: string,
+      overrideStreamer?: string
+    ) => {
+      const url = buildGhostUrl(ghost, overrideVideoId, overrideStreamer);
+      if (url && pathname !== url) {
+        router.push(url, { scroll: false });
       }
+    },
+    [buildGhostUrl, pathname, router]
+  );
+
+  /**
+   * Reactive fallback: replace the URL (no history entry) when
+   * `currentGhost` changes during passive playback (the Twitch player
+   * advances past a ghost timestamp without user interaction).
+   */
+  const prevPassiveGhostRef = useRef<string | null>(null);
+  useEffect(() => {
+    const ghostId = currentGhost?.detection_id ?? null;
+    // Only fire for passive changes — skip if this was a user-triggered change
+    // (those already called pushGhostUrl)
+    if (ghostId === prevPassiveGhostRef.current) return;
+    prevPassiveGhostRef.current = ghostId;
+
+    const url = buildGhostUrl(currentGhost);
+    if (url && pathname !== url) {
+      router.replace(url, { scroll: false });
     }
-    return match;
-  }, [sortedGhosts, currentTime]);
+  }, [currentGhost, buildGhostUrl, pathname, router]);
 
   // ---- Boundary detection: at first/last ghost ----
   const isAtFirstGhost = useMemo(() => {
@@ -525,12 +566,14 @@ export function EmbedPanel() {
     );
   }, [sortedGhosts, currentGhost, currentTime]);
 
-  // ---- Seek to a ghost: move player ----
+  // ---- Seek to a ghost: optimistic update + player seek + URL push ----
   const seekToGhost = useCallback(
     (ghost: EmbedGhost) => {
+      setActiveGhost(ghost);
+      pushGhostUrl(ghost);
       seek(ghost.frame_time_seconds);
     },
-    [seek]
+    [seek, setActiveGhost, pushGhostUrl]
   );
 
   // ---- Arrow navigation: prev/next ghost ----

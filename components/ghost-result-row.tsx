@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useEmbed } from "@/components/embed-provider";
@@ -28,9 +29,21 @@ export function GhostResultRow({
   isActive,
   onNavigateToStreamer,
 }: GhostResultRowProps) {
-  const { setEmbed } = useEmbed();
+  const { setEmbed, setActiveGhost } = useEmbed();
+  const router = useRouter();
 
   const handlePlay = () => {
+    // Optimistic ghost + URL update before the player seek lands
+    setActiveGhost({
+      detection_id: ghost.detection_id,
+      username: ghost.username,
+      rank: ghost.rank,
+      frame_time_seconds: ghost.frame_time_seconds,
+    });
+
+    const url = `/${encodeURIComponent(ghost.streamer_display_name)}/${ghost.vod_source_id}/${encodeURIComponent(ghost.username)}`;
+    router.push(url, { scroll: false });
+
     setEmbed(ghost.vod_source_id, ghost.frame_time_seconds, {
       streamerName: ghost.streamer_display_name,
       streamerAvatar: ghost.streamer_avatar,

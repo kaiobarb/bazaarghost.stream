@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -62,8 +63,17 @@ interface EmbedContextValue extends EmbedState {
   /** Total VOD duration in seconds. */
   duration: number;
 
-  // ---- Ghost markers for the timeline (auto-fetched per VOD) ----
+  // ---- Ghost data ----
+  /** All ghost markers for the current VOD, sorted by time ascending. */
   ghosts: EmbedGhost[];
+  /**
+   * The currently-active ghost. Derived from playback position during normal
+   * playback, but can be set optimistically via {@link setActiveGhost} for
+   * instant UI feedback before the player seek lands.
+   */
+  activeGhost: EmbedGhost | null;
+  /** Optimistically set the active ghost (e.g. on result row click, arrow nav). */
+  setActiveGhost: (ghost: EmbedGhost | null) => void;
 
   // ---- VOD data (fetched from vod_embed_info) ----
   bazaarChapters: number[] | null;
@@ -144,6 +154,10 @@ export function EmbedProvider({ children }: { children: ReactNode }) {
 
   // Ghost markers
   const [ghosts, setGhosts] = useState<EmbedGhost[]>([]);
+
+  // Optimistic ghost override — when non-null, takes precedence over time-derived.
+  // Cleared once the polled currentTime catches up to the ghost's timestamp.
+  const [ghostOverride, setGhostOverride] = useState<EmbedGhost | null>(null);
 
   // VOD data (fetched from vod_embed_info)
   const [bazaarChapters, setBazaarChapters] = useState<number[] | null>(null);
@@ -345,6 +359,52 @@ export function EmbedProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // ---- Active ghost: optimistic override or time-derived ----
+  const sortedGhosts = useMemo(
+    () =>
+      [...ghosts].sort((a, b) => a.frame_time_seconds - b.frame_time_seconds),
+    [ghosts]
+  );
+
+  /** Derive the ghost whose timestamp is at or before current playback time. */
+  const timeDerivedGhost = useMemo(() => {
+    if (sortedGhosts.length === 0) return null;
+    let match: EmbedGhost | null = null;
+    for (const g of sortedGhosts) {
+      if (g.frame_time_seconds <= currentTime) {
+        match = g;
+      } else {
+        break;
+      }
+    }
+    return match;
+  }, [sortedGhosts, currentTime]);
+
+  /**
+   * Clear the optimistic override once the time-derived ghost matches it,
+   * meaning the player has caught up to the seek target.
+   */
+  useEffect(() => {
+    if (
+      ghostOverride &&
+      timeDerivedGhost &&
+      ghostOverride.detection_id === timeDerivedGhost.detection_id
+    ) {
+      setGhostOverride(null);
+    }
+  }, [ghostOverride, timeDerivedGhost]);
+
+  /** The active ghost: optimistic override wins, falls back to time-derived. */
+  const activeGhost = ghostOverride ?? timeDerivedGhost;
+
+  /**
+   * Set the active ghost optimistically. Call this at user-triggered ghost
+   * changes (row click, arrow nav, timeline click) for instant UI feedback.
+   */
+  const setActiveGhost = useCallback((ghost: EmbedGhost | null) => {
+    setGhostOverride(ghost);
+  }, []);
+
   // ---- Public API ----
   const setEmbed = useCallback(
     (videoId: string, timestamp: number, meta?: EmbedMeta) => {
@@ -417,7 +477,9 @@ export function EmbedProvider({ children }: { children: ReactNode }) {
         isMuted,
         currentTime,
         duration,
-        ghosts,
+        ghosts: sortedGhosts,
+        activeGhost,
+        setActiveGhost,
         bazaarChapters,
       }}
     >
