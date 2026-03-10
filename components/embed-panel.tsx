@@ -7,8 +7,11 @@ import {
   ArrowLeft,
   ArrowRight,
   Copy,
+  Ghost,
   Pause,
   Play,
+  Search,
+  User,
   Video,
   Volume2,
   VolumeX,
@@ -799,6 +802,47 @@ export function EmbedPanel() {
               />
             </div>
           </>
+        )}
+
+        {/* Contextual explore pills — quick filters for related results */}
+        {(currentGhost || meta) && (
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-3 py-2">
+            <span className="mr-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+              See more
+            </span>
+            {currentGhost && (
+              <button
+                onClick={() =>
+                  router.push(
+                    `/search?q=${encodeURIComponent(currentGhost.username)}`,
+                    { scroll: false }
+                  )
+                }
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              >
+                <Ghost className="size-2.5" />
+                <span className="font-medium text-foreground">
+                  {currentGhost.username}
+                </span>
+              </button>
+            )}
+            {meta?.streamerName && (
+              <button
+                onClick={() =>
+                  router.push(
+                    `/search?streamer=${encodeURIComponent(meta.streamerName)}`,
+                    { scroll: false }
+                  )
+                }
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              >
+                <User className="size-2.5" />
+                <span className="font-medium text-foreground">
+                  {meta.streamerName}
+                </span>
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
