@@ -1,11 +1,16 @@
 import type React from "react";
+import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import { draftMode } from "next/headers";
 
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { VercelToolbar } from "@vercel/toolbar/next";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/layout/theme-provider";
+import Navbar from "@/components/layout/navbar";
+import { GlobalSearchHeader } from "@/components/search/global-search-header";
+import { getGlobalStats } from "@/lib/server-utils";
+import { showSearchTabs } from "@/flags";
 import "./globals.css";
 
 import { Inter, JetBrains_Mono } from "next/font/google";
@@ -148,7 +153,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { isEnabled: isAdmin } = await draftMode();
+  const [{ isEnabled: isAdmin }, stats, searchTabs] = await Promise.all([
+    draftMode(),
+    getGlobalStats(),
+    showSearchTabs(),
+  ]);
   const showToolbar = isAdmin || process.env.NODE_ENV === "development";
 
   return (
@@ -157,7 +166,21 @@ export default async function RootLayout({
         className={`antialiased font-sans ${inter.variable} ${jetbrainsMono.variable} ${averiaLibre.variable}`}
       >
         <ThemeProvider>
-          <div className="min-h-screen bg-background">{children}</div>
+          <div className="flex h-svh flex-col bg-background">
+            <Navbar />
+            <p className="shrink-0 border-b border-sidebar-border py-1 text-center font-mono text-xs text-muted-foreground">
+              tracking {stats.streamers} streamers &middot; {stats.vods} vods
+              &middot; {stats.matchups} matchups
+            </p>
+            <div className="shrink-0 border-b border-sidebar-border">
+              <div className="mx-auto max-w-6xl px-4">
+                <Suspense>
+                  <GlobalSearchHeader showSearchTabs={searchTabs} />
+                </Suspense>
+              </div>
+            </div>
+            <main className="flex min-h-0 flex-1 flex-col">{children}</main>
+          </div>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />

@@ -21,7 +21,7 @@ export default async function LandingPage() {
   const stats = await getGlobalStats();
 
   return (
-    <main className="min-h-screen">
+    <div className="flex-1 overflow-auto">
       {/* ----------------------------------------------------------------- */}
       {/* Hero                                                              */}
       {/* ----------------------------------------------------------------- */}
@@ -352,7 +352,7 @@ export default async function LandingPage() {
           </p>
         </div>
       </footer>
-    </main>
+    </div>
   );
 }
 

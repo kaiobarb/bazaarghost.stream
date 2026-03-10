@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useEmbed } from "@/components/embed-provider";
+import { useEmbed } from "./embed-provider";
 import { supabase } from "@/lib/supabase-client";
 
 interface GhostLoaderProps {

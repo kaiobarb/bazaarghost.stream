@@ -7,7 +7,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { EmbedPanel } from "@/components/embed-panel";
+import { EmbedPanel } from "@/components/embed";
 
 /** Duration (ms) for the panel expand/collapse CSS transition. */
 const TRANSITION_MS = 100;

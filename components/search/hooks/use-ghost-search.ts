@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase-client";
-import type { GhostResult } from "@/components/ghost-result-row";
+import type { GhostResult } from "@/components/results";
 import { FETCH_SIZE } from "../constants";
 
 /**

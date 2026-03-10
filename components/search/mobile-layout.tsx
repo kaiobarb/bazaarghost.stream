@@ -1,34 +1,27 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { EmbedDrawer } from "@/components/embed-drawer";
+import { EmbedDrawer } from "@/components/embed";
 
 /**
  * Props for {@link MobileLayout}.
  */
 interface MobileLayoutProps {
-  searchHeader: ReactNode;
   searchResults: ReactNode;
-  searchHeaderHeight: number;
 }
 
 /**
- * Mobile layout — full-width column with the search header, results, and
- * a CSS bottom-sheet embed drawer.
+ * Mobile layout — full-width column with search results and a CSS
+ * bottom-sheet embed drawer.
  *
- * The `searchHeaderHeight` is passed to the {@link EmbedDrawer} so it can
- * position its snap point just below the header.
+ * The search header is rendered in the root layout above all route
+ * content, so this component only handles the results list and drawer.
  */
-export function MobileLayout({
-  searchHeader,
-  searchResults,
-  searchHeaderHeight,
-}: MobileLayoutProps) {
+export function MobileLayout({ searchResults }: MobileLayoutProps) {
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col bg-background">
-      {searchHeader}
       {searchResults}
-      <EmbedDrawer headerHeight={searchHeaderHeight} />
+      <EmbedDrawer />
     </div>
   );
 }

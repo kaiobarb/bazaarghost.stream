@@ -1,44 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useEmbed } from "@/components/embed-provider";
+import { useEmbed } from "@/components/embed";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { VodResult } from "@/components/vod-result-row";
+import type { VodResult } from "@/components/results";
 
 import { useSearchUrl } from "./hooks/use-search-url";
 import { useStreamerOptions } from "./hooks/use-streamer-options";
 import { useGhostSearch } from "./hooks/use-ghost-search";
 import { useVodSearch } from "./hooks/use-vod-search";
 
-import { SearchHeader } from "./search-header";
 import { SearchResults } from "./search-results";
 import { DesktopLayout } from "./desktop-layout";
 import { MobileLayout } from "./mobile-layout";
 
 /**
- * Props for {@link SearchPanel}.
- */
-interface SearchPanelProps {
-  showSearchTabs?: boolean;
-}
-
-/**
- * Top-level search panel orchestrator.
+ * Search panel orchestrator — results and layout only.
  *
- * Composes the search hooks ({@link useSearchUrl}, {@link useStreamerOptions},
- * {@link useGhostSearch}, {@link useVodSearch}) with the presentational
- * components ({@link SearchHeader}, {@link SearchResults}) and selects the
- * appropriate layout ({@link DesktopLayout} or {@link MobileLayout}) based on
- * viewport width.
- *
- * This component owns no data-fetching or URL-mutation logic itself — it
- * delegates entirely to the hooks and passes their return values through as
- * props to the UI layer.
+ * The search header (input + streamer picker + tabs) is rendered in the
+ * root layout via {@link GlobalSearchHeader}. This component owns the
+ * search result hooks and delegates to {@link DesktopLayout} or
+ * {@link MobileLayout} for presentation.
  */
-export default function SearchPanel({
-  showSearchTabs = false,
-}: SearchPanelProps) {
+export default function SearchPanel() {
   const router = useRouter();
   const isMobile = useIsMobile();
   const {
@@ -54,21 +39,11 @@ export default function SearchPanel({
     queryParam,
     effectiveStreamer,
     effectiveVod,
-    inputValue,
-    handleInputChange,
     replaceParams,
-    buildSearchUrl,
   } = useSearchUrl();
 
-  // ---- Streamer options & picker ----
-  const {
-    streamerOptions,
-    resolvedStreamer,
-    filteredStreamers,
-    openStreamerPopover,
-    setOpenStreamerPopover,
-    handleSelectStreamer,
-  } = useStreamerOptions({
+  // ---- Streamer options (needed for filtered streamers list) ----
+  const { resolvedStreamer, filteredStreamers } = useStreamerOptions({
     effectiveStreamer,
     searchMode,
     queryParam,
@@ -102,7 +77,7 @@ export default function SearchPanel({
   } = useVodSearch({
     queryParam,
     streamerDisplayName: resolvedStreamer?.displayName ?? null,
-    streamerOptions,
+    streamerOptions: filteredStreamers,
     enabled: searchMode === "vods",
   });
 
@@ -139,61 +114,7 @@ export default function SearchPanel({
     [router]
   );
 
-  /** Build a tab href that preserves the current `?q=` across mode switches. */
-  const buildModeHref = useCallback(
-    (baseHref: string) => {
-      if (queryParam) return `${baseHref}?q=${encodeURIComponent(queryParam)}`;
-      return baseHref;
-    },
-    [queryParam]
-  );
-
-  /** Navigate to a different search mode tab. */
-  const handleModeChange = useCallback(
-    (href: string) => {
-      router.push(buildModeHref(href));
-    },
-    [router, buildModeHref]
-  );
-
-  // ---- Measure search header height for mobile sheet ----
-  const searchHeaderRef = useRef<HTMLDivElement>(null);
-  const [searchHeaderHeight, setSearchHeaderHeight] = useState(0);
-
-  useEffect(() => {
-    const el = searchHeaderRef.current;
-    if (!el) return;
-    const measure = () =>
-      setSearchHeaderHeight(el.getBoundingClientRect().height);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [isMobile]);
-
   // ---- Shared UI elements ----
-  const isLoading =
-    (searchMode === "ghosts" && isGhostLoading) ||
-    (searchMode === "vods" && isVodLoading);
-
-  const searchHeader = (
-    <SearchHeader
-      ref={searchHeaderRef}
-      searchMode={searchMode}
-      showSearchTabs={showSearchTabs}
-      inputValue={inputValue}
-      isLoading={isLoading}
-      onInputChange={handleInputChange}
-      onModeChange={handleModeChange}
-      streamerOptions={streamerOptions}
-      resolvedStreamer={resolvedStreamer}
-      effectiveStreamer={effectiveStreamer}
-      openStreamerPopover={openStreamerPopover}
-      onOpenStreamerPopover={setOpenStreamerPopover}
-      onSelectStreamer={handleSelectStreamer}
-    />
-  );
-
   const searchResults = (
     <SearchResults
       searchMode={searchMode}
@@ -222,25 +143,10 @@ export default function SearchPanel({
 
   // ---- Layout branching ----
   if (isMobile) {
-    return (
-      <MobileLayout
-        searchHeader={searchHeader}
-        searchResults={searchResults}
-        searchHeaderHeight={searchHeaderHeight}
-      />
-    );
+    return <MobileLayout searchResults={searchResults} />;
   }
 
   return (
-    <>
-      {/* Search header spans full viewport width, content centered */}
-      <div className="shrink-0 border-b border-sidebar-border">
-        <div className="mx-auto max-w-6xl px-4">{searchHeader}</div>
-      </div>
-      <DesktopLayout
-        searchResults={searchResults}
-        embedVisible={embedVisible}
-      />
-    </>
+    <DesktopLayout searchResults={searchResults} embedVisible={embedVisible} />
   );
 }

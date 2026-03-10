@@ -1,13 +1,14 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { VirtualizedResultList } from "@/components/virtualized-result-list";
+import { VirtualizedResultList } from "@/components/search/virtualized-result-list";
 import {
   GhostResultRow,
   type GhostResult,
-} from "@/components/ghost-result-row";
-import { VodResultRow, type VodResult } from "@/components/vod-result-row";
-import { StreamerResultRow } from "@/components/streamer-result-row";
+  VodResultRow,
+  type VodResult,
+  StreamerResultRow,
+} from "@/components/results";
 import type { SearchMode, StreamerOption } from "./types";
 
 /**

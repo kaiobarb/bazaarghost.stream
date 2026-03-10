@@ -24,7 +24,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useEmbed, type EmbedGhost } from "@/components/embed-provider";
+import { useEmbed, type EmbedGhost } from "./embed-provider";
 import { cn, secondsToTwitchTimestamp } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -513,7 +513,7 @@ export function EmbedPanel() {
 
   /**
    * Push a new history entry for a user-triggered ghost change (row click,
-   * arrow nav, timeline click). Since the (app)/layout.tsx persists across
+   * arrow nav, timeline click). Since the (embed)/layout.tsx persists across
    * these routes, only the leaf page.tsx re-renders — the embed, search
    * panel, and navbar are unaffected.
    */

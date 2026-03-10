@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useEmbed } from "@/components/embed-provider";
+import { useEmbed } from "@/components/embed";
 
 export interface VodResult {
   vod_id: number;

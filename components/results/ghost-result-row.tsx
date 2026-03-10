@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { useEmbed } from "@/components/embed-provider";
+import { useEmbed } from "@/components/embed";
 import type { Database } from "@/types/supabase";
 
 export type GhostResult =

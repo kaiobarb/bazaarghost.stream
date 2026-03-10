@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { GhostLoader } from "@/components/ghost-loader";
+import { GhostLoader } from "@/components/embed";
 
 /** Revalidate ghost matchup pages once per day — detection data is immutable. */
 export const revalidate = 86400;

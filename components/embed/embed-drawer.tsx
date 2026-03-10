@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronUp, Pause, Play } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { EmbedPanel } from "@/components/embed-panel";
-import { useEmbed } from "@/components/embed-provider";
+import { EmbedPanel } from "./embed-panel";
+import { useEmbed } from "./embed-provider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { GhostLoader } from "@/components/ghost-loader";
+import { GhostLoader } from "@/components/embed";
 
 /** Revalidate VOD pages once per day — VOD data is essentially immutable. */
 export const revalidate = 86400;

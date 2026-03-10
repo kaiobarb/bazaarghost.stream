@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase-client";
-import type { VodResult } from "@/components/vod-result-row";
+import type { VodResult } from "@/components/results";
 import type { StreamerOption } from "../types";
 import { FETCH_SIZE } from "../constants";
 
