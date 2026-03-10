@@ -232,10 +232,15 @@ export default function SearchPanel({
   }
 
   return (
-    <DesktopLayout
-      searchHeader={searchHeader}
-      searchResults={searchResults}
-      embedVisible={embedVisible}
-    />
+    <>
+      {/* Search header spans full viewport width, content centered */}
+      <div className="shrink-0 border-b border-sidebar-border">
+        <div className="mx-auto max-w-6xl px-4">{searchHeader}</div>
+      </div>
+      <DesktopLayout
+        searchResults={searchResults}
+        embedVisible={embedVisible}
+      />
+    </>
   );
 }

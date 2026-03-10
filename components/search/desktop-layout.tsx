@@ -12,7 +12,6 @@ import { EmbedPanel } from "@/components/embed-panel";
  * Props for {@link DesktopLayout}.
  */
 interface DesktopLayoutProps {
-  searchHeader: ReactNode;
   searchResults: ReactNode;
   embedVisible: boolean;
 }
@@ -20,12 +19,14 @@ interface DesktopLayoutProps {
 /**
  * Desktop two-panel layout using `react-resizable-panels`.
  *
- * Left panel (30% default, 20-50% range): search header + results.
+ * Left panel (30% default, 20-50% range): search results list.
  * Right panel (70% default, 40%+ range): Twitch embed player or an
  * empty-state placeholder when no VOD is loaded.
+ *
+ * The search header is rendered above this component at full viewport
+ * width by the {@link SearchPanel} orchestrator.
  */
 export function DesktopLayout({
-  searchHeader,
   searchResults,
   embedVisible,
 }: DesktopLayoutProps) {
@@ -34,14 +35,13 @@ export function DesktopLayout({
       orientation="horizontal"
       className="min-h-0 w-full flex-1"
     >
-      {/* Search panel */}
+      {/* Search results panel */}
       <ResizablePanel
         defaultSize="30%"
         minSize="20%"
         maxSize="50%"
         className="flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
       >
-        {searchHeader}
         {searchResults}
       </ResizablePanel>
 

@@ -62,7 +62,7 @@ export const SearchHeader = forwardRef<HTMLDivElement, SearchHeaderProps>(
         ref={ref}
         className="relative z-50 flex flex-col gap-3 bg-background p-1"
       >
-        <div className="@container flex flex-col gap-2">
+        <div className="@container flex flex-col gap-2 pb-2">
           {/* Mode tabs — hidden when feature flag is off */}
           {showSearchTabs && (
             <Tabs
@@ -79,9 +79,9 @@ export const SearchHeader = forwardRef<HTMLDivElement, SearchHeaderProps>(
                     <TabsTrigger
                       key={opt.value}
                       value={opt.value}
-                      className="after:bg-accent data-[state=active]:text-accent dark:data-[state=active]:text-accent"
+                      className="after:bg-accent data-[state=active]:text-accent dark:data-[state=active]:text-accent max-w-25"
                     >
-                      <Icon className="size-3.5" />
+                      <Icon className="size-4" />
                       {opt.label}
                     </TabsTrigger>
                   );
@@ -113,7 +113,7 @@ export const SearchHeader = forwardRef<HTMLDivElement, SearchHeaderProps>(
               />
             </div>
           ) : searchMode === "vods" ? (
-            <>
+            <div className="flex items-center gap-2">
               <StreamerPicker
                 streamerOptions={streamerOptions}
                 resolvedStreamer={resolvedStreamer}
@@ -121,6 +121,7 @@ export const SearchHeader = forwardRef<HTMLDivElement, SearchHeaderProps>(
                 open={openStreamerPopover}
                 onOpenChange={onOpenStreamerPopover}
                 onSelect={onSelectStreamer}
+                triggerClassName="w-auto shrink-0"
               />
               <SearchInput
                 value={inputValue}
@@ -128,7 +129,7 @@ export const SearchHeader = forwardRef<HTMLDivElement, SearchHeaderProps>(
                 placeholder="Search VODs..."
                 isLoading={isLoading}
               />
-            </>
+            </div>
           ) : (
             <SearchInput
               value={inputValue}
