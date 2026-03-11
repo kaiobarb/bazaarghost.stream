@@ -23,6 +23,8 @@ export interface UseSearchUrlReturn {
   effectiveStreamer: string | null;
   /** Effective vod (param or path-derived) */
   effectiveVod: string | null;
+  /** Serialized search params string (e.g. `"q=foo&streamer=bar"`). */
+  searchParamsString: string;
   /** Controlled input value (synced to queryParam) */
   inputValue: string;
   /** Update the controlled input and debounce-push ?q= to URL */
@@ -154,6 +156,7 @@ export function useSearchUrl(): UseSearchUrlReturn {
     vodParam,
     effectiveStreamer,
     effectiveVod,
+    searchParamsString: searchParams.toString(),
     inputValue,
     handleInputChange,
     replaceParams,

@@ -1,70 +1,40 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { useEmbed } from "@/components/embed";
-import { usePanelControls } from "@/components/search/panel-context";
 import type { Database } from "@/types/supabase";
 
 export type GhostResult =
   Database["public"]["Functions"]["fuzzy_search_detections"]["Returns"][number];
 
+/**
+ * Props for {@link GhostResultRow}.
+ */
 interface GhostResultRowProps {
   ghost: GhostResult;
   isActive: boolean;
+  /** Called when the row is clicked (play this ghost matchup). */
+  onPlay: (ghost: GhostResult) => void;
+  /** Called when the streamer name is clicked. */
   onNavigateToStreamer: (streamerId: number, name: string) => void;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
+/**
+ * A single ghost search result row.
+ *
+ * Pure presentational component — all navigation and embed logic is handled
+ * by the {@link onPlay} callback provided by the parent.
+ */
 export function GhostResultRow({
   ghost,
   isActive,
+  onPlay,
   onNavigateToStreamer,
 }: GhostResultRowProps) {
-  const { setEmbed, setActiveGhost } = useEmbed();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { expandEmbed, isEmbedCollapsed } = usePanelControls();
-
-  const handlePlay = () => {
-    // Optimistic ghost + URL update before the player seek lands
-    setActiveGhost({
-      detection_id: ghost.detection_id,
-      username: ghost.username,
-      rank: ghost.rank,
-      frame_time_seconds: ghost.frame_time_seconds,
-    });
-
-    const basePath = `/${encodeURIComponent(ghost.streamer_display_name)}/${ghost.vod_source_id}/${encodeURIComponent(ghost.username)}`;
-    // Preserve all current search params so the search results don't re-fetch
-    const qs = searchParams.toString();
-    router.push(qs ? `${basePath}?${qs}` : basePath, { scroll: false });
-
-    setEmbed(ghost.vod_source_id, ghost.frame_time_seconds, {
-      streamerName: ghost.streamer_display_name,
-      streamerAvatar: ghost.streamer_avatar,
-      vodTitle: `Video ${ghost.vod_source_id}`,
-      date: formatDate(ghost.actual_timestamp),
-    });
-
-    // Auto-expand embed panel if collapsed so the player is visible
-    if (isEmbedCollapsed()) {
-      expandEmbed();
-    }
-  };
-
   return (
     <div
-      onClick={handlePlay}
+      onClick={() => onPlay(ghost)}
       className={cn(
         "@container box-border h-[72px] cursor-pointer overflow-hidden rounded-lg border transition-colors",
         isActive

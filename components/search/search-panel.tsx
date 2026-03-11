@@ -3,8 +3,9 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useEmbed } from "@/components/embed";
+import { usePanelControls } from "./panel-context";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { VodResult } from "@/components/results";
+import type { GhostResult, VodResult } from "@/components/results";
 
 import { useSearchUrl } from "./hooks/use-search-url";
 import { useStreamerOptions } from "./hooks/use-streamer-options";
@@ -30,7 +31,10 @@ export default function SearchPanel() {
     isVisible: embedVisible,
     videoId: activeVideoId,
     currentTime: activeTime,
+    setEmbed,
+    setActiveGhost,
   } = useEmbed();
+  const { expandEmbed, isEmbedCollapsed } = usePanelControls();
 
   // ---- URL state ----
   const {
@@ -39,6 +43,7 @@ export default function SearchPanel() {
     queryParam,
     effectiveStreamer,
     effectiveVod,
+    searchParamsString,
     replaceParams,
   } = useSearchUrl();
 
@@ -114,6 +119,47 @@ export default function SearchPanel() {
     [router]
   );
 
+  /** Play a ghost matchup: set embed, navigate, and expand the panel. */
+  const handleGhostPlay = useCallback(
+    (ghost: GhostResult) => {
+      setActiveGhost({
+        detection_id: ghost.detection_id,
+        username: ghost.username,
+        rank: ghost.rank,
+        frame_time_seconds: ghost.frame_time_seconds,
+      });
+
+      const basePath = `/${encodeURIComponent(ghost.streamer_display_name)}/${ghost.vod_source_id}/${encodeURIComponent(ghost.username)}`;
+      router.push(
+        searchParamsString ? `${basePath}?${searchParamsString}` : basePath,
+        { scroll: false }
+      );
+
+      const date = new Date(ghost.actual_timestamp).toLocaleDateString(
+        "en-US",
+        { month: "short", day: "numeric", year: "numeric" }
+      );
+      setEmbed(ghost.vod_source_id, ghost.frame_time_seconds, {
+        streamerName: ghost.streamer_display_name,
+        streamerAvatar: ghost.streamer_avatar,
+        vodTitle: `Video ${ghost.vod_source_id}`,
+        date,
+      });
+
+      if (isEmbedCollapsed()) {
+        expandEmbed();
+      }
+    },
+    [
+      router,
+      searchParamsString,
+      setActiveGhost,
+      setEmbed,
+      expandEmbed,
+      isEmbedCollapsed,
+    ]
+  );
+
   // ---- Shared UI elements ----
   const searchResults = (
     <SearchResults
@@ -134,6 +180,7 @@ export default function SearchPanel() {
       hasMoreVods={hasMoreVods}
       loadMoreVods={loadMoreVods}
       filteredStreamers={filteredStreamers}
+      onGhostPlay={handleGhostPlay}
       onNavigateToStreamer={handleNavigateToStreamer}
       onNavigateToVodGhosts={handleNavigateToVodGhosts}
       onVodClick={handleVodClick}

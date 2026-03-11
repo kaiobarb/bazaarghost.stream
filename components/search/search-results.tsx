@@ -40,6 +40,7 @@ interface SearchResultsProps {
   filteredStreamers: StreamerOption[];
 
   // Navigation handlers
+  onGhostPlay: (ghost: GhostResult) => void;
   onNavigateToStreamer: (streamerId: number, name: string) => void;
   onNavigateToVodGhosts: (vodSourceId: string, title: string) => void;
   onVodClick: (vod: VodResult) => void;
@@ -76,6 +77,7 @@ export function SearchResults({
   hasMoreVods,
   loadMoreVods,
   filteredStreamers,
+  onGhostPlay,
   onNavigateToStreamer,
   onNavigateToVodGhosts,
   onVodClick,
@@ -85,32 +87,45 @@ export function SearchResults({
     (searchMode === "ghosts" && isGhostLoading) ||
     (searchMode === "vods" && isVodLoading);
 
+  // Only show the full-panel spinner when there are no stale results to display
+  const hasNoResults =
+    (searchMode === "ghosts" && ghostResults.length === 0) ||
+    (searchMode === "vods" && vodResults.length === 0);
+
   return (
     <>
       {searchMode === "ghosts" && (
         <>
-          {!isGhostLoading && ghostResults.length > 0 && (
-            <VirtualizedResultList
-              items={ghostResults}
-              totalCount={ghostTotalResults}
-              getItemKey={(g) => g.detection_id}
-              getItemDate={(g) => g.actual_timestamp}
-              getItemMatchField={(g) => g.username}
-              searchQuery={queryParam}
-              renderItem={(ghost) => (
-                <GhostResultRow
-                  ghost={ghost}
-                  isActive={
-                    activeVideoId === ghost.vod_source_id &&
-                    Math.abs(activeTime - ghost.frame_time_seconds) < 5
-                  }
-                  onNavigateToStreamer={onNavigateToStreamer}
-                />
+          {ghostResults.length > 0 && (
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              {isGhostLoading && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-sidebar/60">
+                  <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                </div>
               )}
-              onLoadMore={loadMoreGhosts}
-              isLoadingMore={isGhostLoadingMore}
-              hasMore={hasMoreGhosts}
-            />
+              <VirtualizedResultList
+                items={ghostResults}
+                totalCount={ghostTotalResults}
+                getItemKey={(g) => g.detection_id}
+                getItemDate={(g) => g.actual_timestamp}
+                getItemMatchField={(g) => g.username}
+                searchQuery={queryParam}
+                renderItem={(ghost) => (
+                  <GhostResultRow
+                    ghost={ghost}
+                    isActive={
+                      activeVideoId === ghost.vod_source_id &&
+                      Math.abs(activeTime - ghost.frame_time_seconds) < 5
+                    }
+                    onPlay={onGhostPlay}
+                    onNavigateToStreamer={onNavigateToStreamer}
+                  />
+                )}
+                onLoadMore={loadMoreGhosts}
+                isLoadingMore={isGhostLoadingMore}
+                hasMore={hasMoreGhosts}
+              />
+            </div>
           )}
           {!isGhostLoading && ghostResults.length === 0 && queryParam && (
             <p className="px-4 py-16 text-center text-muted-foreground">
@@ -122,25 +137,32 @@ export function SearchResults({
 
       {searchMode === "vods" && (
         <>
-          {!isVodLoading && vodResults.length > 0 && (
-            <VirtualizedResultList
-              items={vodResults}
-              totalCount={vodTotalResults}
-              getItemKey={(v) => v.vod_source_id}
-              getItemDate={(v) => v.published_at}
-              renderItem={(vod) => (
-                <VodResultRow
-                  vod={vod}
-                  isActive={activeVideoId === vod.vod_source_id}
-                  onNavigateToStreamer={onNavigateToStreamer}
-                  onNavigateToGhosts={onNavigateToVodGhosts}
-                  onRowClick={() => onVodClick(vod)}
-                />
+          {vodResults.length > 0 && (
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              {isVodLoading && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-sidebar/60">
+                  <Loader2 className="size-6 animate-spin text-muted-foreground" />
+                </div>
               )}
-              onLoadMore={loadMoreVods}
-              isLoadingMore={isVodLoadingMore}
-              hasMore={hasMoreVods}
-            />
+              <VirtualizedResultList
+                items={vodResults}
+                totalCount={vodTotalResults}
+                getItemKey={(v) => v.vod_source_id}
+                getItemDate={(v) => v.published_at}
+                renderItem={(vod) => (
+                  <VodResultRow
+                    vod={vod}
+                    isActive={activeVideoId === vod.vod_source_id}
+                    onNavigateToStreamer={onNavigateToStreamer}
+                    onNavigateToGhosts={onNavigateToVodGhosts}
+                    onRowClick={() => onVodClick(vod)}
+                  />
+                )}
+                onLoadMore={loadMoreVods}
+                isLoadingMore={isVodLoadingMore}
+                hasMore={hasMoreVods}
+              />
+            </div>
           )}
           {!isVodLoading && vodResults.length === 0 && queryParam && (
             <p className="px-4 py-16 text-center text-muted-foreground">
@@ -182,7 +204,7 @@ export function SearchResults({
         </>
       )}
 
-      {isLoading && (
+      {isLoading && hasNoResults && (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
