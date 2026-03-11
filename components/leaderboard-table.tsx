@@ -3,7 +3,13 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Search, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import {
+  Search,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  ChevronRight,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -12,7 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { LeaderboardEntry } from "@/lib/leaderboard-data";
+import type {
+  LeaderboardEntry,
+  LeaderboardBySeason,
+  Season,
+} from "@/lib/leaderboard-data";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -29,13 +39,38 @@ type SortField = "Position" | "Rating";
 type SortDirection = "asc" | "desc";
 
 interface LeaderboardTableProps {
-  /** Full leaderboard dataset for the selected season. */
-  data: LeaderboardEntry[];
+  /** All seasons, sorted most-recent first. */
+  seasons: Season[];
+  /** Leaderboard entries keyed by season ID. */
+  leaderboardBySeason: LeaderboardBySeason;
 }
 
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
+
+/** Rating formula breakdown shared between mobile (collapsible) and desktop. */
+function RatingFormulaContent() {
+  return (
+    <>
+      <p className="font-mono leading-relaxed">
+        &Delta; = (W &minus; R/500 &times; 5) &times; 5 + B
+      </p>
+      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+        <dt className="font-mono">W</dt>
+        <dd>Wins this cycle</dd>
+        <dt className="font-mono">R</dt>
+        <dd>Current rating</dd>
+        <dt className="font-mono">500</dt>
+        <dd>Base rating</dd>
+        <dt className="font-mono">5</dt>
+        <dd>Neutral wins &amp; scale factor</dd>
+        <dt className="font-mono">B</dt>
+        <dd>+5 bonus at 10 wins</dd>
+      </dl>
+    </>
+  );
+}
 
 /** Sort direction indicator icon for a column header. */
 function SortIcon({
@@ -63,14 +98,22 @@ function SortIcon({
 /**
  * Dual-column virtualized leaderboard.
  *
- * Left column: heading, season picker, search input, and result count.
+ * Left column: heading, season picker, search input, result count, and
+ * a rating formula explanation.
  * Right column: fixed column headers and a virtualized scrollable list of
  * player rows. On mobile the columns stack vertically.
  *
- * @param data - The full leaderboard dataset for the selected season.
+ * All data is server-fetched and passed as props — no client-side API calls.
+ *
+ * @param seasons - All available seasons.
+ * @param leaderboardBySeason - Pre-fetched leaderboard data for every season.
  */
-export function LeaderboardTable({ data }: LeaderboardTableProps) {
-  const [season, setSeason] = useState("12");
+export function LeaderboardTable({
+  seasons,
+  leaderboardBySeason,
+}: LeaderboardTableProps) {
+  const defaultSeason = seasons[0]?.id ?? 1;
+  const [seasonId, setSeasonId] = useState(defaultSeason);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<SortField>("Position");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -78,6 +121,8 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // -- Derived data --------------------------------------------------------
+
+  const data = leaderboardBySeason[seasonId] ?? [];
 
   const filteredData = useMemo(() => {
     if (!searchQuery.trim()) return data;
@@ -116,8 +161,10 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
   );
 
   const handleSeasonChange = useCallback((value: string) => {
-    setSeason(value);
+    setSeasonId(Number(value));
     setSearchQuery("");
+    setSortField("Position");
+    setSortDirection("asc");
   }, []);
 
   // -- Render --------------------------------------------------------------
@@ -132,34 +179,61 @@ export function LeaderboardTable({ data }: LeaderboardTableProps) {
       <div className="flex shrink-0 flex-col gap-4 md:w-64">
         <h1 className="font-serif text-2xl font-bold">Leaderboard</h1>
 
-        <Select value={season} onValueChange={handleSeasonChange}>
-          <SelectTrigger className="w-full" size="sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Array.from({ length: 12 }, (_, i) => 12 - i).map((s) => (
-              <SelectItem key={s} value={String(s)}>
-                Season {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Season + search: single row on mobile, stacked on desktop */}
+        <div className="flex gap-2 md:flex-col md:gap-4">
+          <Select value={String(seasonId)} onValueChange={handleSeasonChange}>
+            <SelectTrigger
+              className="h-9 w-[130px] shrink-0 md:w-full"
+              size="default"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {seasons.map((s) => (
+                <SelectItem key={s.id} value={String(s.id)}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search players..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-10 border-border bg-card pl-9"
-          />
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search players..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-9 border-border bg-card pl-9"
+            />
+          </div>
         </div>
 
         <p className="font-mono text-xs text-muted-foreground">
           {sortedData.length.toLocaleString()} player
           {sortedData.length !== 1 ? "s" : ""}
         </p>
+
+        {/* Rating formula: collapsible on mobile, always open on desktop */}
+        <div className="rounded-md border border-border bg-card/50 text-xs text-muted-foreground">
+          {/* Mobile: collapsible details/summary */}
+          <details className="md:hidden">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 p-3 font-medium text-foreground/80 [&>svg]:open:rotate-90">
+              <ChevronRight className="size-3.5 transition-transform" />
+              Rating formula
+            </summary>
+            <div className="border-t border-border px-3 pb-3 pt-2">
+              <RatingFormulaContent />
+            </div>
+          </details>
+          {/* Desktop: always visible */}
+          <div className="hidden p-3 md:block">
+            <p className="mb-2 font-medium text-foreground/80">
+              Rating formula
+            </p>
+            <RatingFormulaContent />
+          </div>
+        </div>
       </div>
 
       {/* ----------------------------------------------------------------- */}

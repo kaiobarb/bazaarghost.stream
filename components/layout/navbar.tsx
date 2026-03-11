@@ -14,7 +14,12 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
-export default function Navbar() {
+interface NavbarProps {
+  /** Whether the leaderboard link is visible (feature-flagged). */
+  showLeaderboard?: boolean;
+}
+
+export default function Navbar({ showLeaderboard = false }: NavbarProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -54,18 +59,14 @@ export default function Navbar() {
             >
               Search
             </Link>
-            <Link
-              href="/leaderboard"
-              className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors"
-            >
-              Leaderboard
-            </Link>
-            <Link
-              href="/streamers"
-              className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors"
-            >
-              Streamers
-            </Link>
+            {showLeaderboard && (
+              <Link
+                href="/leaderboard"
+                className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors"
+              >
+                Leaderboard
+              </Link>
+            )}
             <Link
               href="/how-it-works"
               className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors"
@@ -129,7 +130,6 @@ export default function Navbar() {
               className="text-foreground hover:text-primary"
             >
               {!mounted ? (
-                // Render nothing or a placeholder during SSR
                 <div className="size-5" />
               ) : theme === "dark" ? (
                 <Sun className="size-5" />
@@ -164,13 +164,15 @@ export default function Navbar() {
                 >
                   Search
                 </Link>
-                <Link
-                  href="/leaderboard"
-                  onClick={() => setIsOpen(false)}
-                  className="text-lg font-medium text-foreground/70 hover:text-foreground transition-colors"
-                >
-                  Leaderboard
-                </Link>
+                {showLeaderboard && (
+                  <Link
+                    href="/leaderboard"
+                    onClick={() => setIsOpen(false)}
+                    className="text-lg font-medium text-foreground/70 hover:text-foreground transition-colors"
+                  >
+                    Leaderboard
+                  </Link>
+                )}
                 <Link
                   href="/streamers"
                   onClick={() => setIsOpen(false)}
@@ -247,7 +249,6 @@ export default function Navbar() {
                     className="text-foreground hover:text-primary"
                   >
                     {!mounted ? (
-                      // Render nothing or a placeholder during SSR
                       <div className="size-5" />
                     ) : theme === "dark" ? (
                       <Sun className="size-5" />

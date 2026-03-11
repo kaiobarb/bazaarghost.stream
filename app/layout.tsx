@@ -10,7 +10,7 @@ import { ThemeProvider } from "@/components/layout/theme-provider";
 import Navbar from "@/components/layout/navbar";
 import { GlobalSearchHeader } from "@/components/search/global-search-header";
 import { getGlobalStats } from "@/lib/server-utils";
-import { showSearchTabs } from "@/flags";
+import { showSearchTabs, showLeaderboard } from "@/flags";
 import "./globals.css";
 
 import { Inter, JetBrains_Mono } from "next/font/google";
@@ -153,11 +153,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [{ isEnabled: isAdmin }, stats, searchTabs] = await Promise.all([
-    draftMode(),
-    getGlobalStats(),
-    showSearchTabs(),
-  ]);
+  const [{ isEnabled: isAdmin }, stats, searchTabs, leaderboard] =
+    await Promise.all([
+      draftMode(),
+      getGlobalStats(),
+      showSearchTabs(),
+      showLeaderboard(),
+    ]);
   const showToolbar = isAdmin || process.env.NODE_ENV === "development";
 
   return (
@@ -167,7 +169,7 @@ export default async function RootLayout({
       >
         <ThemeProvider>
           <div className="flex h-svh flex-col bg-background">
-            <Navbar />
+            <Navbar showLeaderboard={leaderboard} />
             <p className="shrink-0 border-b border-sidebar-border py-1 text-center font-mono text-xs text-muted-foreground">
               tracking {stats.streamers} streamers &middot; {stats.vods} vods
               &middot; {stats.matchups} matchups
