@@ -71,12 +71,16 @@ export function useSearchUrl(): UseSearchUrlReturn {
   const effectiveVod =
     vodParam ?? (hasSearchParams ? null : routeContext.pathVodId);
 
-  // On `/ghost/:username`, seed the query from the path when no explicit
-  // search params are present.  When the user has an active search (e.g.
-  // `?streamer=`), the path username is just the embed target ghost and
-  // should not override the search query.
+  // On the `/ghost/:username` profile route, seed the query from the path
+  // when no explicit search params are present.  On embed routes
+  // (`/:streamer/:vodId/:ghost`), pathUsername is just the embed target
+  // and must NOT override the search query or fill the search bar.
+  const isGhostProfileRoute = pathname.startsWith("/ghost/");
   const effectiveQuery =
-    !queryParam && !hasSearchParams && routeContext.pathUsername
+    !queryParam &&
+    !hasSearchParams &&
+    isGhostProfileRoute &&
+    routeContext.pathUsername
       ? routeContext.pathUsername
       : queryParam;
 

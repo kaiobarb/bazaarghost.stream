@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { LeaderboardTable } from "@/components/leaderboard-table";
@@ -28,12 +27,10 @@ export default async function LeaderboardPage() {
 
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col px-4 py-6">
-      <Suspense fallback={<div />}>
-        <LeaderboardTable
-          seasons={seasons}
-          leaderboardBySeason={leaderboardBySeason}
-        />
-      </Suspense>
+      <LeaderboardTable
+        seasons={seasons}
+        leaderboardBySeason={leaderboardBySeason}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useEmbed } from "@/components/embed";
+import { usePanelControls } from "@/components/search/panel-context";
 import type { Database } from "@/types/supabase";
 
 export type GhostResult =
@@ -32,6 +33,7 @@ export function GhostResultRow({
   const { setEmbed, setActiveGhost } = useEmbed();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { expandEmbed, isEmbedCollapsed } = usePanelControls();
 
   const handlePlay = () => {
     // Optimistic ghost + URL update before the player seek lands
@@ -53,6 +55,11 @@ export function GhostResultRow({
       vodTitle: `Video ${ghost.vod_source_id}`,
       date: formatDate(ghost.actual_timestamp),
     });
+
+    // Auto-expand embed panel if collapsed so the player is visible
+    if (isEmbedCollapsed()) {
+      expandEmbed();
+    }
   };
 
   return (

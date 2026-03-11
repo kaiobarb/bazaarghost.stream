@@ -9,6 +9,7 @@ import { VercelToolbar } from "@vercel/toolbar/next";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import Navbar from "@/components/layout/navbar";
 import { GlobalSearchHeader } from "@/components/search/global-search-header";
+import { PanelControlsProvider } from "@/components/search/panel-context";
 import { getGlobalStats } from "@/lib/server-utils";
 import { showSearchTabs, showLeaderboard } from "@/flags";
 import "./globals.css";
@@ -168,21 +169,23 @@ export default async function RootLayout({
         className={`antialiased font-sans ${inter.variable} ${jetbrainsMono.variable} ${averiaLibre.variable}`}
       >
         <ThemeProvider>
-          <div className="flex h-svh flex-col bg-background">
-            <Navbar showLeaderboard={leaderboard} />
-            <p className="shrink-0 border-b border-sidebar-border py-1 text-center font-mono text-xs text-muted-foreground">
-              tracking {stats.streamers} streamers &middot; {stats.vods} vods
-              &middot; {stats.matchups} matchups
-            </p>
-            <div className="shrink-0 border-b border-sidebar-border">
-              <div className="mx-auto max-w-6xl px-4">
-                <Suspense>
-                  <GlobalSearchHeader showSearchTabs={searchTabs} />
-                </Suspense>
+          <PanelControlsProvider>
+            <div className="flex h-svh flex-col bg-background">
+              <Navbar showLeaderboard={leaderboard} />
+              <p className="shrink-0 border-b border-sidebar-border py-1 text-center font-mono text-xs text-muted-foreground">
+                tracking {stats.streamers} streamers &middot; {stats.vods} vods
+                &middot; {stats.matchups} matchups
+              </p>
+              <div className="shrink-0 border-b border-sidebar-border">
+                <div className="mx-auto max-w-6xl px-4">
+                  <Suspense>
+                    <GlobalSearchHeader showSearchTabs={searchTabs} />
+                  </Suspense>
+                </div>
               </div>
+              <main className="flex min-h-0 flex-1 flex-col">{children}</main>
             </div>
-            <main className="flex min-h-0 flex-1 flex-col">{children}</main>
-          </div>
+          </PanelControlsProvider>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />

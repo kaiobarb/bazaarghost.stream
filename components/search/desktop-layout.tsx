@@ -1,6 +1,7 @@
 "use client";
 
-import { type ReactNode, useCallback, useRef } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
+import { usePathname } from "next/navigation";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import {
   ResizableHandle,
@@ -8,6 +9,8 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { EmbedPanel } from "@/components/embed";
+import { useRegisterPanelControls } from "./panel-context";
+import { deriveRouteContext } from "./lib/route-utils";
 
 /** Duration (ms) for the panel expand/collapse CSS transition. */
 const TRANSITION_MS = 100;
@@ -31,6 +34,10 @@ interface DesktopLayoutProps {
  * either panel is collapsed expands both panels back to their defaults
  * with a smooth CSS transition.
  *
+ * On ghost matchup routes (`/:streamer/:vodId/:ghost`), the search panel
+ * starts collapsed so the viewer sees the clip/fight first. Typing in
+ * the search bar or clicking the handle will expand it.
+ *
  * The search header is rendered above this component at full viewport
  * width by the {@link SearchPanel} orchestrator.
  */
@@ -38,9 +45,15 @@ export function DesktopLayout({
   searchResults,
   embedVisible,
 }: DesktopLayoutProps) {
+  const pathname = usePathname();
   const searchPanelRef = useRef<PanelImperativeHandle>(null);
   const embedPanelRef = useRef<PanelImperativeHandle>(null);
   const groupRef = useRef<HTMLDivElement>(null);
+
+  // Captures the pathname at mount time so we can distinguish "user landed
+  // here from an external link" (should auto-collapse) from "user navigated
+  // here via an in-app ghost click" (should NOT auto-collapse).
+  const initialPathnameRef = useRef(pathname);
 
   /**
    * Temporarily add a CSS transition class to all panels so that
@@ -69,6 +82,47 @@ export function DesktopLayout({
       if (embedCollapsed) embedPanelRef.current?.expand();
     });
   }, [animateTransition]);
+
+  // ---- Auto-collapse search panel on ghost matchup routes ----
+  // Only when the user *landed* directly on this route (e.g. shared link).
+  // If they navigated here by clicking a ghost result in the search panel,
+  // the panel should stay open.
+  const routeContext = deriveRouteContext(pathname);
+  const isGhostMatchup = !!(
+    routeContext.pathStreamer &&
+    routeContext.pathVodId &&
+    routeContext.pathUsername
+  );
+
+  useEffect(() => {
+    // Only auto-collapse when the ghost matchup path was the *initial* path
+    // at mount time — meaning the user arrived via an external/shared link.
+    const landedOnGhostMatchup =
+      pathname === initialPathnameRef.current && isGhostMatchup;
+    if (!landedOnGhostMatchup) return;
+
+    // Collapse after a frame so the panel group has finished mounting
+    requestAnimationFrame(() => {
+      if (searchPanelRef.current && !searchPanelRef.current.isCollapsed()) {
+        searchPanelRef.current.collapse();
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally runs only on mount
+  }, []);
+
+  // ---- Register panel controls into the root-level context ----
+  const panelControls = useMemo(
+    () => ({
+      expandSearch: () =>
+        animateTransition(() => searchPanelRef.current?.expand()),
+      expandEmbed: () =>
+        animateTransition(() => embedPanelRef.current?.expand()),
+      isSearchCollapsed: () => searchPanelRef.current?.isCollapsed() ?? false,
+      isEmbedCollapsed: () => embedPanelRef.current?.isCollapsed() ?? false,
+    }),
+    [animateTransition]
+  );
+  useRegisterPanelControls(panelControls);
 
   return (
     <ResizablePanelGroup
@@ -101,13 +155,6 @@ export function DesktopLayout({
       >
         <div className="flex h-full flex-col">
           <EmbedPanel />
-          {/* {!embedVisible && (
-            <div className="flex flex-1 items-center justify-center border border-dashed border-border bg-card/30 px-6">
-              <p className="text-center text-sm text-muted-foreground">
-                Select a result to load a VOD embed.
-              </p>
-            </div>
-          )} */}
         </div>
       </ResizablePanel>
     </ResizablePanelGroup>
