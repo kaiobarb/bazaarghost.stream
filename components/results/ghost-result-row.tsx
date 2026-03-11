@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useEmbed } from "@/components/embed";
@@ -31,6 +31,7 @@ export function GhostResultRow({
 }: GhostResultRowProps) {
   const { setEmbed, setActiveGhost } = useEmbed();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const handlePlay = () => {
     // Optimistic ghost + URL update before the player seek lands
@@ -41,8 +42,10 @@ export function GhostResultRow({
       frame_time_seconds: ghost.frame_time_seconds,
     });
 
-    const url = `/${encodeURIComponent(ghost.streamer_display_name)}/${ghost.vod_source_id}/${encodeURIComponent(ghost.username)}`;
-    router.push(url, { scroll: false });
+    const basePath = `/${encodeURIComponent(ghost.streamer_display_name)}/${ghost.vod_source_id}/${encodeURIComponent(ghost.username)}`;
+    // Preserve all current search params so the search results don't re-fetch
+    const qs = searchParams.toString();
+    router.push(qs ? `${basePath}?${qs}` : basePath, { scroll: false });
 
     setEmbed(ghost.vod_source_id, ghost.frame_time_seconds, {
       streamerName: ghost.streamer_display_name,

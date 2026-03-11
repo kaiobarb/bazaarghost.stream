@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -490,6 +490,7 @@ export function EmbedPanel() {
   } = useEmbed();
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   /**
    * Build the canonical URL path for the given ghost + VOD context.
@@ -535,6 +536,9 @@ export function EmbedPanel() {
    * Reactive fallback: replace the URL (no history entry) when
    * `currentGhost` changes during passive playback (the Twitch player
    * advances past a ghost timestamp without user interaction).
+   *
+   * Preserves existing search params (e.g. `?q=`) so that the search
+   * result list is not disrupted by passive ghost URL updates.
    */
   const prevPassiveGhostRef = useRef<string | null>(null);
   useEffect(() => {
@@ -544,11 +548,16 @@ export function EmbedPanel() {
     if (ghostId === prevPassiveGhostRef.current) return;
     prevPassiveGhostRef.current = ghostId;
 
-    const url = buildGhostUrl(currentGhost);
-    if (url && pathname !== url) {
+    const basePath = buildGhostUrl(currentGhost);
+    if (!basePath) return;
+
+    // Preserve current query string so search results stay stable
+    const qs = searchParams.toString();
+    const url = qs ? `${basePath}?${qs}` : basePath;
+    if (url !== `${pathname}${qs ? `?${qs}` : ""}`) {
       router.replace(url, { scroll: false });
     }
-  }, [currentGhost, buildGhostUrl, pathname, router]);
+  }, [currentGhost, buildGhostUrl, pathname, searchParams, router]);
 
   // ---- Boundary detection: at first/last ghost ----
   const isAtFirstGhost = useMemo(() => {

@@ -62,12 +62,21 @@ export function useSearchUrl(): UseSearchUrlReturn {
   // Only use the explicit ?streamer= param — path-derived streamer should
   // not constrain the search filter when navigating to a ghost result.
   const effectiveStreamer = streamerParam;
-  const effectiveVod = vodParam ?? routeContext.pathVodId;
 
-  // On `/ghost/:username`, seed the query from the path when ?q= is absent.
-  // This keeps the search input and ghost search hook in sync with the route.
+  // Only fall back to the path-derived VOD when there are no explicit search
+  // params.  When `?q=` or `?streamer=` are present the user has an active
+  // search and the VOD in the path is just the embed target — it should not
+  // narrow the result set.
+  const hasSearchParams = !!queryParam || !!streamerParam;
+  const effectiveVod =
+    vodParam ?? (hasSearchParams ? null : routeContext.pathVodId);
+
+  // On `/ghost/:username`, seed the query from the path when no explicit
+  // search params are present.  When the user has an active search (e.g.
+  // `?streamer=`), the path username is just the embed target ghost and
+  // should not override the search query.
   const effectiveQuery =
-    !queryParam && routeContext.pathUsername
+    !queryParam && !hasSearchParams && routeContext.pathUsername
       ? routeContext.pathUsername
       : queryParam;
 
